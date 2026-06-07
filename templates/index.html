@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Recruitment Assistant</title>
+  <style>
+    body { font-family: Arial; max-width: 950px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+    h1 { color: #222; }
+    h2 { color: #444; border-bottom: 2px solid #222; padding-bottom: 5px; }
+    input, textarea, select { width: 100%; padding: 8px; margin: 5px 0 10px 0; box-sizing: border-box; border: 1px solid #ccc; }
+    input[type="file"] { background: white; padding: 10px; border: 2px dashed #ccc; cursor: pointer; }
+    button { background: #222; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-right: 5px; margin-top: 10px; }
+    button:hover { background: #444; }
+    .section { background: white; padding: 20px; margin-bottom: 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .result { background: #f0f0f0; padding: 12px; margin-top: 10px; border-left: 4px solid #222; display:none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    th { background: #222; color: white; }
+    .badge { padding: 3px 8px; border-radius: 3px; font-size: 12px; color: white; }
+    .pending { background: #999; }
+    .shortlisted { background: #2196F3; }
+    .matched { background: #FF9800; }
+    .ranked { background: #9C27B0; }
+    .interview_scheduled { background: #4CAF50; }
+    .rejected { background: #f44336; }
+    a { color: #2196F3; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    td b { color: #222; font-size: 15px; }
+    td:first-child { text-align: center; }
+    .upload-label { font-size: 13px; color: #666; margin-bottom: 5px; display: block; }
+    .pdf-status { font-size: 13px; color: #4CAF50; margin-top: -8px; margin-bottom: 8px; display:none; }
+    .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .nav a { background: #222; color: white; padding: 8px 16px; border-radius: 3px; text-decoration: none; font-size: 14px; }
+    .nav a:hover { background: #444; }
+    .stats { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-box { background: white; padding: 15px 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; flex: 1; }
+    .stat-box h3 { margin: 0; font-size: 28px; color: #222; }
+    .stat-box p { margin: 5px 0 0 0; font-size: 13px; color: #666; }
+  </style>
+</head>
+<body>
+
+<h1>🤖 AI Recruitment Assistant</h1>
+<p>4 Agents: Resume Screening → Job Matching → Candidate Ranking → Interview Scheduling</p>
+
+<!-- Navigation -->
+<div class="nav">
+  <a href="#add-job">📋 Add Job</a>
+  <a href="#add-candidate">👤 Add Candidate</a>
+  <a href="#pipeline">⚙️ Run Pipeline</a>
+  <a href="#dashboard">📊 Dashboard</a>
+  <a href="#interviews">📅 Interviews</a>
+  <a href="#ranking">🏆 Rankings</a>
+</div>
+
+<!-- Stats -->
+<div class="stats" id="stats">
+  <div class="stat-box"><h3 id="total_candidates">0</h3><p>Total Candidates</p></div>
+  <div class="stat-box"><h3 id="total_shortlisted">0</h3><p>Shortlisted</p></div>
+  <div class="stat-box"><h3 id="total_interviews">0</h3><p>Interviews Scheduled</p></div>
+  <div class="stat-box"><h3 id="total_rejected">0</h3><p>Rejected</p></div>
+</div>
+
+<!-- Add Job -->
+<div class="section" id="add-job">
+  <h2>📋 Step 1: Add Job (ATS MCP)</h2>
+  <input id="job_title" placeholder="Job Title (e.g. Backend Developer)" />
+  <input id="job_skills" placeholder="Required Skills (e.g. Python, Django, SQL)" />
+  <input id="job_exp" placeholder="Min Experience (years)" type="number" />
+  <textarea id="job_desc" placeholder="Job Description" rows="3"></textarea>
+  <button onclick="addJob()">Add Job</button>
+  <div id="job_result" class="result"></div>
+</div>
+
+<!-- Add Candidate -->
+<div class="section" id="add-candidate">
+  <h2>👤 Step 2: Add Candidate — Candidate Screening Portal (Resume Parser MCP)</h2>
+  <input id="c_name" placeholder="Full Name" />
+  <input id="c_email" placeholder="Email" />
+  <input id="c_phone" placeholder="Phone" />
+  <input id="c_skills" placeholder="Skills (e.g. Python, Django, React)" />
+  <input id="c_exp" placeholder="Experience (years)" type="number" />
+  <span class="upload-label">📄 Upload Resume (PDF or TXT):</span>
+  <input type="file" id="c_resume_file" accept=".pdf,.txt" onchange="readResume(this)" />
+  <div class="pdf-status" id="pdf_status">✅ Resume uploaded successfully!</div>
+  <textarea id="c_resume" placeholder="Resume text will appear here after upload, or type manually..." rows="5"></textarea>
+  <button onclick="addCandidate()">Add Candidate</button>
+  <div id="candidate_result" class="result"></div>
+</div>
+
+<!-- Run Pipeline -->
+<div class="section" id="pipeline">
+  <h2>⚙️ Step 3: Run AI Pipeline (A2A Communication)</h2>
+  <p style="font-size:13px; color:#666;">
+    Agent 1 (Resume Screening) → Agent 2 (Job Matching) → Agent 3 (Ranking) → Agent 4 (Interview Scheduling)
+  </p>
+  <input id="p_candidate_id" placeholder="Candidate ID (from Step 2)" type="number" />
+  <input id="p_job_id" placeholder="Job ID (from Step 1)" type="number" />
+  <button onclick="runPipeline()">🚀 Run All 4 Agents</button>
+  <div id="pipeline_result" class="result"></div>
+</div>
+
+<!-- Recruiter Dashboard -->
+<div class="section" id="dashboard">
+  <h2>📊 Recruiter Dashboard</h2>
+  <button onclick="loadCandidates()">View All Candidates</button>
+  <button onclick="loadLogs()">View A2A Logs</button>
+  <button onclick="loadJobs()">View All Jobs</button>
+  <div id="dashboard_content"></div>
+</div>
+
+<!-- Interview Scheduler -->
+<div class="section" id="interviews">
+  <h2>📅 Interview Scheduler (Calendar MCP)</h2>
+  <button onclick="loadInterviews()">Load Scheduled Interviews</button>
+  <div id="interview_dashboard"></div>
+</div>
+
+<!-- Candidate Ranking Dashboard -->
+<div class="section" id="ranking">
+  <h2>🏆 Candidate Ranking Dashboard</h2>
+  <button onclick="loadRanking()">Load Rankings</button>
+  <div id="ranking_dashboard"></div>
+</div>
+
+<script>
+  // Load stats on page load
+  window.onload = function() { loadStats(); }
+
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/candidates/');
+      const data = await res.json();
+      document.getElementById('total_candidates').innerText = data.length;
+      document.getElementById('total_shortlisted').innerText = data.filter(c => c.status === 'shortlisted' || c.status === 'matched' || c.status === 'ranked').length;
+      document.getElementById('total_interviews').innerText = data.filter(c => c.status === 'interview_scheduled').length;
+      document.getElementById('total_rejected').innerText = data.filter(c => c.status === 'rejected').length;
+    } catch(e) {}
+  }
+
+  // PDF / TXT Resume Upload
+  function readResume(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.name.endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('c_resume').value = e.target.result;
+        document.getElementById('pdf_status').style.display = 'block';
+      };
+      reader.readAsText(file);
+    } else if (file.name.endsWith('.pdf')) {
+      const formData = new FormData();
+      formData.append('resume', file);
+      fetch('/api/parse-resume/', {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json()).then(data => {
+        document.getElementById('c_resume').value = data.text;
+        document.getElementById('pdf_status').style.display = 'block';
+      }).catch(() => {
+        document.getElementById('pdf_status').style.display = 'block';
+        document.getElementById('pdf_status').innerText = '⚠️ PDF parse failed, please type resume manually.';
+      });
+    }
+  }
+
+  async function addJob() {
+    const res = await fetch('/api/add-job/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title: document.getElementById('job_title').value,
+        required_skills: document.getElementById('job_skills').value,
+        min_experience: document.getElementById('job_exp').value,
+        description: document.getElementById('job_desc').value
+      })
+    });
+    const data = await res.json();
+    const el = document.getElementById('job_result');
+    el.style.display = 'block';
+    el.innerHTML = `✅ Job Added! ID: <b>${data.id}</b> — Use this ID in Step 3`;
+    loadStats();
+  }
+
+  async function addCandidate() {
+    const res = await fetch('/api/add-candidate/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('c_name').value,
+        email: document.getElementById('c_email').value,
+        phone: document.getElementById('c_phone').value,
+        skills: document.getElementById('c_skills').value,
+        experience: document.getElementById('c_exp').value,
+        resume_text: document.getElementById('c_resume').value
+      })
+    });
+    const data = await res.json();
+    const el = document.getElementById('candidate_result');
+    el.style.display = 'block';
+    el.innerHTML = `✅ Candidate Added! ID: <b>${data.id}</b> — Use this ID in Step 3`;
+    loadStats();
+  }
+
+  async function runPipeline() {
+    const el = document.getElementById('pipeline_result');
+    el.style.display = 'block';
+    el.innerHTML = '⏳ Running agents, please wait...';
+    const res = await fetch('/api/run-pipeline/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        candidate_id: document.getElementById('p_candidate_id').value,
+        job_id: document.getElementById('p_job_id').value
+      })
+    });
+    const data = await res.json();
+    el.innerHTML = `
+      <b>✅ Pipeline Complete!</b><br><br>
+      <b>Name:</b> ${data.name}<br>
+      <b>Status:</b> ${data.status}<br>
+      <b>Score:</b> ${data.score}<br>
+      <b>Interview:</b> ${data.interview_slot ? data.interview_slot.slot + ' via ' + data.interview_slot.platform : 'Not scheduled (rejected)'}
+    `;
+    loadStats();
+  }
+
+  async function loadCandidates() {
+    const res = await fetch('/api/candidates/');
+    const data = await res.json();
+    let html = '<br><table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th><th>Interview</th></tr>';
+    data.forEach(c => {
+      html += `<tr>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>${c.email}</td>
+        <td>${c.phone}</td>
+        <td>${c.skills}</td>
+        <td>${c.experience}y</td>
+        <td>${c.score}</td>
+        <td><span class="badge ${c.status}">${c.status}</span></td>
+        <td>${c.interview_date ? c.interview_date.substring(0,16) : '-'}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('dashboard_content').innerHTML = html;
+  }
+
+  async function loadJobs() {
+    const res = await fetch('/api/jobs/');
+    const data = await res.json();
+    let html = '<br><table><tr><th>ID</th><th>Title</th><th>Required Skills</th><th>Min Exp</th><th>Description</th></tr>';
+    data.forEach(j => {
+      html += `<tr>
+        <td>${j.id}</td>
+        <td>${j.title}</td>
+        <td>${j.required_skills}</td>
+        <td>${j.min_experience}y</td>
+        <td>${j.description}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('dashboard_content').innerHTML = html;
+  }
+
+  async function loadLogs() {
+    const res = await fetch('/api/logs/');
+    const data = await res.json();
+    let html = '<br><table><tr><th>Candidate</th><th>From Agent</th><th>To Agent</th><th>Message</th></tr>';
+    data.forEach(l => {
+      html += `<tr>
+        <td>${l.candidate__name}</td>
+        <td>${l.from_agent}</td>
+        <td>${l.to_agent}</td>
+        <td>${l.message}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('dashboard_content').innerHTML = html;
+  }
+
+  async function loadInterviews() {
+    const res = await fetch('/api/candidates/');
+    const data = await res.json();
+    const scheduled = data.filter(c => c.status === 'interview_scheduled');
+    if (scheduled.length === 0) {
+      document.getElementById('interview_dashboard').innerHTML = '<p>No interviews scheduled yet. Run the pipeline first.</p>';
+      return;
+    }
+    let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Interview Date</th><th>Meet Link</th></tr>';
+    scheduled.forEach(c => {
+      html += `<tr>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>${c.email}</td>
+        <td>${c.phone}</td>
+        <td><span class="badge interview_scheduled">${c.status}</span></td>
+        <td>${c.interview_date ? c.interview_date.substring(0,16) : '-'}</td>
+        <td><a href="https://meet.google.com/recruitment-${c.name.toLowerCase().replace(' ','-')}" target="_blank">Join Meet</a></td>
+      </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('interview_dashboard').innerHTML = html;
+  }
+
+  async function loadRanking() {
+    const res = await fetch('/api/candidates/');
+    const data = await res.json();
+    const ranked = data.filter(c => c.score > 0).sort((a,b) => b.score - a.score);
+    if (ranked.length === 0) {
+      document.getElementById('ranking_dashboard').innerHTML = '<p>No candidates ranked yet. Run the pipeline first.</p>';
+      return;
+    }
+    let html = '<table><tr><th>Rank</th><th>Name</th><th>Skills</th><th>Experience</th><th>Score</th><th>Status</th></tr>';
+    ranked.forEach((c, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+      html += `<tr>
+        <td>${medal}</td>
+        <td>${c.name}</td>
+        <td>${c.skills}</td>
+        <td>${c.experience}y</td>
+        <td><b>${c.score}</b></td>
+        <td><span class="badge ${c.status}">${c.status}</span></td>
+      </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('ranking_dashboard').innerHTML = html;
+  }
+</script>
+
+</body>
+</html>
