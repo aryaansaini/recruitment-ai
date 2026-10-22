@@ -1,20 +1,23 @@
 from django.db import models
 
-# MCP Server 1: ATS MCP - Candidate data store karta hai
+
 class Candidate(models.Model):
-    # Candidate basic info
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SHORTLISTED = 'shortlisted', 'Shortlisted'
+        MATCHED = 'matched', 'Matched'
+        RANKED = 'ranked', 'Ranked'
+        INTERVIEW_SCHEDULED = 'interview_scheduled', 'Interview scheduled'
+        REJECTED = 'rejected', 'Rejected'
+
     name = models.CharField(max_length=100)
     email = models.EmailField()
     phone = models.CharField(max_length=15)
-    skills = models.TextField()          # e.g. Python, Django, SQL
-    experience = models.IntegerField()   # years mein
-    resume_text = models.TextField()     # MCP: Resume Parser MCP
+    skills = models.TextField()         
+    experience = models.IntegerField()   
+    resume_text = models.TextField()
     score = models.FloatField(default=0)
-    
-    # Agent status track karta hai
-    status = models.CharField(max_length=50, default='pending')
-    # pending → shortlisted → matched → ranked → interview_scheduled → rejected
-    
+    status = models.CharField(max_length=50, choices=Status.choices, default=Status.PENDING)
     interview_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -22,7 +25,6 @@ class Candidate(models.Model):
         return self.name
 
 
-# MCP Server 1: ATS MCP - Job data store karta hai
 class Job(models.Model):
     title = models.CharField(max_length=100)
     required_skills = models.TextField()    # e.g. Python, Django, SQL
@@ -34,7 +36,37 @@ class Job(models.Model):
         return self.title
 
 
-# A2A Communication log - kaun sa agent kisne bheja
+class Application(models.Model):
+    """One candidate applying to one job. Holds the per-job score and status."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SHORTLISTED = 'shortlisted', 'Shortlisted'
+        MATCHED = 'matched', 'Matched'
+        RANKED = 'ranked', 'Ranked'
+        INTERVIEW_SCHEDULED = 'interview_scheduled', 'Interview scheduled'
+        REJECTED = 'rejected', 'Rejected'
+
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name='applications')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='applications')
+    score = models.FloatField(default=0)
+    status = models.CharField(max_length=50, choices=Status.choices, default=Status.PENDING)
+    reason = models.TextField(blank=True)           # why the AI gave this score
+    fallback_used = models.BooleanField(default=False)  # True if rule-based fallback scored it (AI failed)
+    interview_date = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['candidate', 'job'], name='unique_candidate_job_application'),
+        ]
+        ordering = ['-score', '-created_at']
+
+    def __str__(self):
+        return f'{self.candidate} -> {self.job} ({self.status})'
+
+
 class AgentLog(models.Model):
     candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE)
     from_agent = models.CharField(max_length=100)
@@ -43,4 +75,4 @@ class AgentLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.from_agent} → {self.to_agent}"
+        return f'{self.from_agent} -> {self.to_agent}'
