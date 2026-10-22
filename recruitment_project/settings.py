@@ -1,9 +1,5 @@
-"""
-Django settings for recruitment_project project.
-All secrets/config come from environment variables (.env file locally).
-"""
-
 import os
+import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -72,13 +68,13 @@ WSGI_APPLICATION = 'recruitment_project.wsgi.application'
 
 
 # ---------- Database ----------
-# SQLite for now; moves to Neon Postgres on Day 2.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+    )
 }
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 
 # ---------- Password validation ----------
@@ -105,6 +101,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------- REST framework ----------
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',

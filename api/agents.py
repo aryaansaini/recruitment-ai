@@ -9,9 +9,8 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-2.5-flash')
-# ============================================
+
 # MCP Server 3: Resume Parser MCP
-# ============================================
 def resume_parser_mcp(resume_text):
     words = resume_text.lower().split()
     tech_keywords = ['python', 'django', 'sql', 'react', 'javascript',
@@ -23,9 +22,8 @@ def resume_parser_mcp(resume_text):
         'keyword_count': len(found)
     }
 
-# ============================================
 # MCP Server 2: Calendar MCP
-# ============================================
+
 def calendar_mcp(candidate_name):
     interview_time = datetime.now() + timedelta(days=3)
     return {
@@ -35,17 +33,14 @@ def calendar_mcp(candidate_name):
         'link': 'meet.google.com/recruitment-' + candidate_name.lower().replace(' ', '-')
     }
 
-# ============================================
 # MCP Server 1: ATS MCP
-# ============================================
 def ats_mcp_update(candidate, status):
     candidate.status = status
     candidate.save()
     return f"ATS Updated: {candidate.name} → {status}"
 
-# ============================================
 # AGENT 1: Resume Screening Agent (Gemini AI)
-# ============================================
+
 def resume_screening_agent(candidate):
     from api.models import AgentLog
     print(f"[Agent 1] Resume Screening: {candidate.name}")
@@ -96,9 +91,7 @@ def resume_screening_agent(candidate):
     print(f"[Agent 1] Done. Score={score}, Status={result}")
     return candidate
 
-# ============================================
 # AGENT 2: Job Matching Agent (Gemini AI)
-# ============================================
 def job_matching_agent(candidate, job):
     from api.models import AgentLog
     print(f"[Agent 2] Job Matching: {candidate.name} ↔ {job.title}")
@@ -148,9 +141,7 @@ def job_matching_agent(candidate, job):
     ats_mcp_update(candidate, 'rejected')
     return False
 
-# ============================================
 # AGENT 3: Candidate Ranking Agent
-# ============================================
 def candidate_ranking_agent(candidates):
     from api.models import AgentLog
     print(f"[Agent 3] Ranking {len(candidates)} candidates")
@@ -169,9 +160,7 @@ def candidate_ranking_agent(candidates):
 
     return ranked
 
-# ============================================
 # AGENT 4: Interview Coordination Agent
-# ============================================
 def interview_coordination_agent(candidate):
     from api.models import AgentLog
     print(f"[Agent 4] Scheduling interview: {candidate.name}")
@@ -191,9 +180,8 @@ def interview_coordination_agent(candidate):
     print(f"[Agent 4] Done. Slot: {slot['slot']}")
     return slot
 
-# ============================================
+
 # MAIN PIPELINE
-# ============================================
 def run_full_pipeline(candidate_id, job_id):
     from api.models import Candidate, Job
 
@@ -210,6 +198,17 @@ def run_full_pipeline(candidate_id, job_id):
         slot = interview_coordination_agent(ranked[0])
     else:
         slot = None
+
+    from api.models import Application
+    Application.objects.update_or_create(
+        candidate=candidate,
+        job=job,
+        defaults={
+            'score': candidate.score,
+            'status': candidate.status,
+            'interview_date': candidate.interview_date,
+        },
+    )
 
     print("===== PIPELINE END =====")
     return candidate, slot
