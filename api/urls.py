@@ -1,8 +1,17 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
+
 from . import views
 
 urlpatterns = [
     path('', views.index),
+
+    # auth
+    path('api/auth/login/', views.LoginView.as_view()),
+    path('api/auth/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/me/', views.me),
+
+    # data
     path('api/add-candidate/', views.add_candidate),
     path('api/add-job/', views.add_job),
     path('api/run-pipeline/', views.run_pipeline),

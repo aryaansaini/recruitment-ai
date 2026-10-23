@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
@@ -68,14 +69,13 @@ WSGI_APPLICATION = 'recruitment_project.wsgi.application'
 
 
 # ---------- Database ----------
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+    'default': dj_database_url.parse(
+        os.getenv('DATABASE_URL') or f'sqlite:///{BASE_DIR / "db.sqlite3"}',  # empty value -> SQLite
         conn_max_age=600,
     )
 }
-DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
-
 
 # ---------- Password validation ----------
 AUTH_PASSWORD_VALIDATORS = [
@@ -99,14 +99,30 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# ---------- REST framework ----------
+# ---------- REST framework + JWT auth ----------
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ],
-    'DEFAULT_THROTTLE_RATES': {'anon': '30/min', 'user': '120/min'},
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/min',
+        'user': '120/min',
+        'login': '10/min',      
+        'pipeline': '10/min',   
+    },
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 
