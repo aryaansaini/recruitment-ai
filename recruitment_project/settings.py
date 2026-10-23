@@ -23,6 +23,11 @@ CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
 ]
 
+# ---------- Gemini / ADK ----------
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+if GEMINI_API_KEY:
+    os.environ.setdefault('GOOGLE_API_KEY', GEMINI_API_KEY)
 
 # ---------- Application definition ----------
 INSTALLED_APPS = [

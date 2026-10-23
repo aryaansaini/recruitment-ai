@@ -70,6 +70,8 @@ def run_pipeline(request):
         'name': candidate.name,
         'status': candidate.status,
         'score': candidate.score,
+        'reason': getattr(candidate, 'ai_reason', ''),
+        'fallback_used': getattr(candidate, 'fallback_used', False),
         'interview_slot': slot,
     })
 

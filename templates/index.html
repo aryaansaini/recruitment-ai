@@ -368,7 +368,9 @@
       <b>Name:</b> ${esc(data.name)}<br>
       <b>Status:</b> ${esc(data.status)}<br>
       <b>Score:</b> ${esc(data.score)}<br>
-      <b>Interview:</b> ${data.interview_slot ? esc(data.interview_slot.slot + ' via ' + data.interview_slot.platform) : 'Not scheduled (rejected)'}
+      <b>AI reason:</b> ${esc(data.reason)}<br>
+      ${data.fallback_used ? '<span class="error-text">⚠️ AI was unavailable: this result used the rule-based fallback.</span><br>' : ''}
+      <b>Interview:</b>
     `);
     loadStats();
   }
