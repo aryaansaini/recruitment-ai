@@ -7,6 +7,13 @@ from django.db import IntegrityError, transaction
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
+from google.adk.models import BaseLlm
+from google.adk.models.llm_response import LlmResponse
+from google.genai import types
+from pydantic import ValidationError
+
+from .adk_agents import SkillProfile, extract_skills
+from .llm import LLMError, MatchResult, ScreeningResult, generate_structured
 from .models import Application, Candidate, Job
 
 
@@ -106,15 +113,27 @@ class CreateTests(BaseAPITest):
         self.assertEqual(Candidate.objects.count(), 0)
 
 
+def ai_ok(score=85, match=True):
+    """Fake generate_structured: returns a valid AI answer for each schema."""
+    def fake(prompt, schema, **kw):
+        if schema is ScreeningResult:
+            return ScreeningResult(score=score, reason='Strong Django and SQL evidence')
+        return MatchResult(is_match=match, match_percent=90 if match else 20, reason='Skills overlap')
+    return fake
+
+
 class PipelineTests(BaseAPITest):
     def setUp(self):
         super().setUp()
         self.login()
-        failing_model = mock.Mock()
-        failing_model.generate_content.side_effect = Exception('no network in tests')
-        patcher = mock.patch('api.agents.model', failing_model)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+
+    def run_pipeline(self, c, j):
+        return self.client.post('/api/run-pipeline/', {'candidate_id': c.id, 'job_id': j.id}, format='json')
+
+    def patch_ai(self, **kw):
+        p = mock.patch('api.agents.generate_structured', **kw)
+        p.start()
+        self.addCleanup(p.stop)
 
     def test_unknown_ids_return_404(self):
         r = self.client.post('/api/run-pipeline/', {'candidate_id': 999, 'job_id': 999}, format='json')
@@ -125,28 +144,125 @@ class PipelineTests(BaseAPITest):
         self.assertEqual(r.status_code, 400)
         self.assertIn('job_id', r.data)
 
-    def test_pipeline_success_creates_application(self):
+    def test_ai_success_stores_reason_and_no_fallback_flag(self):
+        self.patch_ai(side_effect=ai_ok(score=85))
         c, j = make_candidate(), make_job()
-        r = self.client.post('/api/run-pipeline/', {'candidate_id': c.id, 'job_id': j.id}, format='json')
+        r = self.run_pipeline(c, j)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.data['status'], 'interview_scheduled')
-        self.assertIsNotNone(r.data['interview_slot'])
+        self.assertEqual(r.data['score'], 85)
+        self.assertFalse(r.data['fallback_used'])
+        self.assertIn('Strong Django', r.data['reason'])
         app = Application.objects.get(candidate=c, job=j)
+        self.assertFalse(app.fallback_used)
+        self.assertIn('Strong Django', app.reason)
         self.assertEqual(app.status, 'interview_scheduled')
 
-    def test_weak_candidate_is_rejected_without_interview(self):
-        c = make_candidate(skills='Excel', experience=0, resume_text='data entry')
-        j = make_job()
-        r = self.client.post('/api/run-pipeline/', {'candidate_id': c.id, 'job_id': j.id}, format='json')
+    def test_ai_failure_uses_fallback_and_is_flagged(self):
+        self.patch_ai(side_effect=LLMError('quota exceeded'))
+        c, j = make_candidate(), make_job()
+        r = self.run_pipeline(c, j)
         self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.data['fallback_used'])
+        self.assertIn('AI unavailable', r.data['reason'])
+        self.assertTrue(Application.objects.get(candidate=c, job=j).fallback_used)
+
+    def test_fallback_score_never_exceeds_100(self):
+        self.patch_ai(side_effect=LLMError('down'))
+        c = make_candidate(skills=','.join(f's{i}' for i in range(30)), experience=40)
+        r = self.run_pipeline(c, make_job())
+        self.assertLessEqual(r.data['score'], 100)
+
+    def test_ai_low_score_rejects_without_interview(self):
+        self.patch_ai(side_effect=ai_ok(score=20))
+        c, j = make_candidate(), make_job()
+        r = self.run_pipeline(c, j)
+        self.assertEqual(r.data['status'], 'rejected')
+        self.assertIsNone(r.data['interview_slot'])
+
+    def test_ai_no_match_rejects(self):
+        self.patch_ai(side_effect=ai_ok(score=80, match=False))
+        c, j = make_candidate(), make_job()
+        r = self.run_pipeline(c, j)
+        self.assertEqual(r.data['status'], 'rejected')
+
+    def test_weak_candidate_rejected_by_fallback(self):
+        self.patch_ai(side_effect=LLMError('down'))
+        c = make_candidate(skills='Excel', experience=0, resume_text='data entry')
+        r = self.run_pipeline(c, make_job())
         self.assertEqual(r.data['status'], 'rejected')
         self.assertIsNone(r.data['interview_slot'])
 
     def test_pipeline_is_rate_limited(self):
+        self.patch_ai(side_effect=LLMError('down'))
         c, j = make_candidate(), make_job()
-        codes = [self.client.post('/api/run-pipeline/', {'candidate_id': c.id, 'job_id': j.id},
-                                  format='json').status_code for _ in range(12)]
+        codes = [self.run_pipeline(c, j).status_code for _ in range(12)]
         self.assertIn(429, codes)
+
+
+class LLMWrapperTests(BaseAPITest):
+    def _client_returning(self, **resp_attrs):
+        client = mock.Mock()
+        client.models.generate_content.return_value = mock.Mock(**resp_attrs)
+        return client
+
+    def test_returns_parsed_object(self):
+        parsed = ScreeningResult(score=70, reason='ok')
+        with mock.patch('api.llm._get_client', return_value=self._client_returning(parsed=parsed, text='')):
+            self.assertEqual(generate_structured('p', ScreeningResult).score, 70)
+
+    def test_falls_back_to_json_text(self):
+        with mock.patch('api.llm._get_client',
+                        return_value=self._client_returning(parsed=None, text='{"score": 55, "reason": "fine"}')):
+            self.assertEqual(generate_structured('p', ScreeningResult).score, 55)
+
+    def test_score_is_clamped_to_0_100(self):
+        self.assertEqual(ScreeningResult(score=250, reason='x').score, 100)
+        self.assertEqual(ScreeningResult(score=-5, reason='x').score, 0)
+
+    def test_invalid_json_raises_llmerror(self):
+        with mock.patch('api.llm._get_client', return_value=self._client_returning(parsed=None, text='not json')):
+            with self.assertRaises(LLMError):
+                generate_structured('p', ScreeningResult)
+
+    def test_api_exception_raises_llmerror(self):
+        client = mock.Mock()
+        client.models.generate_content.side_effect = RuntimeError('503 unavailable')
+        with mock.patch('api.llm._get_client', return_value=client):
+            with self.assertRaises(LLMError):
+                generate_structured('p', ScreeningResult)
+
+    def test_missing_api_key_raises_llmerror(self):
+        import api.llm as llm
+        with mock.patch.object(llm, '_client', None), self.settings(GEMINI_API_KEY=''):
+            with self.assertRaises(LLMError):
+                generate_structured('p', ScreeningResult)
+
+
+class StubLlm(BaseLlm):
+    """Offline stand-in for Gemini so ADK can be tested without network."""
+    model: str = 'stub'
+    reply: str = ''
+
+    @classmethod
+    def supported_models(cls):
+        return ['stub']
+
+    async def generate_content_async(self, llm_request, stream=False):
+        yield LlmResponse(content=types.Content(role='model', parts=[types.Part(text=self.reply)]))
+
+
+class ADKTests(BaseAPITest):
+    def test_adk_agent_runs_from_sync_django_and_returns_structured_output(self):
+        stub = StubLlm(reply='{"skills": ["python", "django"], "years_experience": 3, "summary": "Backend dev"}')
+        profile = extract_skills('Rahul, 3 years Python and Django', model=stub)
+        self.assertIsInstance(profile, SkillProfile)
+        self.assertEqual(profile.skills, ['python', 'django'])
+        self.assertEqual(profile.years_experience, 3)
+
+    def test_adk_bad_model_output_is_rejected(self):
+        stub = StubLlm(reply='{"skills": "not-a-list"}')
+        with self.assertRaises(ValidationError):
+            extract_skills('resume', model=stub)
 
 
 class ParseResumeTests(BaseAPITest):
