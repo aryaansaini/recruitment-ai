@@ -1,85 +1,124 @@
-from django.shortcuts import render
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .models import Candidate, Job, AgentLog
-from .agents import run_full_pipeline
+import io
+import logging
 
-# Homepage
+from django.shortcuts import render, get_object_or_404
+from rest_framework import status
+from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .agents import run_full_pipeline
+from .models import Candidate, Job, AgentLog
+from .serializers import (
+    CandidateCreateSerializer,
+    JobCreateSerializer,
+    PipelineRequestSerializer,
+)
+from .throttles import PipelineThrottle
+
+logger = logging.getLogger(__name__)
+
+MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+
 def index(request):
     return render(request, 'index.html')
 
-# Add Candidate
+
+# ---------- Auth ----------
+class LoginView(TokenObtainPairView):
+    """POST username + password -> {access, refresh}. Strictly rate-limited."""
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
+
+
+@api_view(['GET'])
+def me(request):
+    return Response({'username': request.user.get_username()})
+
+
+# ---------- Create ----------
 @api_view(['POST'])
 def add_candidate(request):
-    data = request.data
-    c = Candidate.objects.create(
-        name=data['name'],
-        email=data['email'],
-        phone=data['phone'],
-        skills=data['skills'],
-        experience=int(data['experience']),
-        resume_text=data['resume_text']
-    )
-    return Response({'id': c.id, 'message': 'Candidate added!'})
+    serializer = CandidateCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    c = serializer.save()
+    return Response({'id': c.id, 'message': 'Candidate added!'}, status=status.HTTP_201_CREATED)
 
-# Add Job
+
 @api_view(['POST'])
 def add_job(request):
-    data = request.data
-    j = Job.objects.create(
-        title=data['title'],
-        required_skills=data['required_skills'],
-        min_experience=int(data['min_experience']),
-        description=data['description']
-    )
-    return Response({'id': j.id, 'message': 'Job added!'})
+    serializer = JobCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    j = serializer.save()
+    return Response({'id': j.id, 'message': 'Job added!'}, status=status.HTTP_201_CREATED)
 
-# Run Pipeline
+
+# ---------- Pipeline ----------
 @api_view(['POST'])
+@throttle_classes([PipelineThrottle])
 def run_pipeline(request):
-    candidate_id = request.data.get('candidate_id')
-    job_id = request.data.get('job_id')
-    candidate, slot = run_full_pipeline(candidate_id, job_id)
+    serializer = PipelineRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    candidate = get_object_or_404(Candidate, pk=serializer.validated_data['candidate_id'])
+    job = get_object_or_404(Job, pk=serializer.validated_data['job_id'])
+
+    candidate, slot = run_full_pipeline(candidate.id, job.id)
     return Response({
         'name': candidate.name,
         'status': candidate.status,
         'score': candidate.score,
-        'interview_slot': slot
+        'interview_slot': slot,
     })
 
-# Get all candidates
+
+# ---------- Read ----------
 @api_view(['GET'])
 def get_candidates(request):
-    candidates = Candidate.objects.all().values()
-    return Response(list(candidates))
+    return Response(list(Candidate.objects.order_by('id').values()))
 
-# Get all jobs
+
 @api_view(['GET'])
 def get_jobs(request):
-    jobs = Job.objects.all().values()
-    return Response(list(jobs))
+    return Response(list(Job.objects.order_by('id').values()))
 
-# Get Agent Logs (A2A Communication)
+
 @api_view(['GET'])
 def get_logs(request):
-    logs = AgentLog.objects.all().values(
-        'from_agent', 'to_agent', 'message', 
-        'timestamp', 'candidate__name'
+    logs = AgentLog.objects.order_by('id').values(
+        'from_agent', 'to_agent', 'message', 'timestamp', 'candidate__name'
     )
     return Response(list(logs))
 
+
+# ---------- Resume parsing ----------
 @api_view(['POST'])
 def parse_resume(request):
     import PyPDF2
-    import io
+
     pdf_file = request.FILES.get('resume')
     if not pdf_file:
-        return Response({'text': ''})
+        return Response({'detail': "No file uploaded (form field name must be 'resume')."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if not pdf_file.name.lower().endswith('.pdf'):
+        return Response({'detail': 'Only PDF files are supported.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if pdf_file.size > MAX_RESUME_BYTES:
+        return Response({'detail': 'File too large (max 5 MB).'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(pdf_file.read()))
-        text = ''
-        for page in reader.pages:
-            text += page.extract_text()
-        return Response({'text': text})
-    except:
-        return Response({'text': ''})
+        text = '\n'.join((page.extract_text() or '') for page in reader.pages)
+    except Exception:
+        logger.exception('PDF parsing failed')
+        return Response({'detail': 'Could not read this PDF. It may be corrupted or encrypted.'},
+                        status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    if not text.strip():
+        return Response({'detail': 'No text found in this PDF (scanned image?). Paste the text manually.'},
+                        status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    return Response({'text': text})

@@ -35,11 +35,34 @@
     .stat-box { background: white; padding: 15px 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; flex: 1; }
     .stat-box h3 { margin: 0; font-size: 28px; color: #222; }
     .stat-box p { margin: 5px 0 0 0; font-size: 13px; color: #666; }
+    /* login overlay */
+    #login_overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    #login_box { background: white; padding: 30px; border-radius: 6px; width: 340px; max-width: 90%; }
+    #login_box h2 { margin-top: 0; }
+    #login_error { color: #c62828; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .topbar .who { font-size: 13px; color: #555; }
+    .topbar button { margin-top: 0; padding: 6px 12px; font-size: 13px; }
+    .error-text { color: #c62828; }
   </style>
 </head>
 <body>
 
-<h1>🤖 AI Recruitment Assistant</h1>
+<!-- Login -->
+<div id="login_overlay">
+  <div id="login_box">
+    <h2>🔐 Recruiter Login</h2>
+    <input id="login_user" placeholder="Username" autocomplete="username" />
+    <input id="login_pass" placeholder="Password" type="password" autocomplete="current-password" />
+    <div id="login_error"></div>
+    <button onclick="login()" style="width:100%; margin:0;">Login</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <h1>🤖 AI Recruitment Assistant</h1>
+  <div class="who"><span id="who"></span> <button onclick="logout()">Logout</button></div>
+</div>
 <p>4 Agents: Resume Screening → Job Matching → Candidate Ranking → Interview Scheduling</p>
 
 <!-- Navigation -->
@@ -123,124 +146,258 @@
 </div>
 
 <script>
-  // Load stats on page load
-  window.onload = function() { loadStats(); }
-
-  async function loadStats() {
-    try {
-      const res = await fetch('/api/candidates/');
-      const data = await res.json();
-      document.getElementById('total_candidates').innerText = data.length;
-      document.getElementById('total_shortlisted').innerText = data.filter(c => c.status === 'shortlisted' || c.status === 'matched' || c.status === 'ranked').length;
-      document.getElementById('total_interviews').innerText = data.filter(c => c.status === 'interview_scheduled').length;
-      document.getElementById('total_rejected').innerText = data.filter(c => c.status === 'rejected').length;
-    } catch(e) {}
+  // ---------- helpers ----------
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, ch =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   }
 
-  // PDF / TXT Resume Upload
+  function errText(data) {
+    if (!data) return 'Unknown error';
+    if (data.detail) return data.detail;
+    return Object.entries(data).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(' ') : v)).join(' | ');
+  }
+
+  async function readJson(res) {
+    try { return await res.json(); } catch (e) { return {}; }
+  }
+
+  function showResult(id, html, isError) {
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.innerHTML = isError ? `<span class="error-text">❌ ${esc(html)}</span>` : html;
+  }
+
+  // ---------- auth (JWT) ----------
+  function showLogin(msg) {
+    document.getElementById('login_overlay').style.display = 'flex';
+    document.getElementById('login_error').innerText = msg || '';
+  }
+  function hideLogin() {
+    document.getElementById('login_overlay').style.display = 'none';
+  }
+
+  async function login() {
+    const username = document.getElementById('login_user').value.trim();
+    const password = document.getElementById('login_pass').value;
+    const res = await fetch('/api/auth/login/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await readJson(res);
+    if (!res.ok) {
+      document.getElementById('login_error').innerText =
+        res.status === 429 ? 'Too many attempts. Wait a minute and try again.' :
+        res.status === 401 ? 'Wrong username or password.' : errText(data);
+      return;
+    }
+    localStorage.setItem('access', data.access);
+    localStorage.setItem('refresh', data.refresh);
+    localStorage.setItem('username', username);
+    document.getElementById('login_pass').value = '';
+    document.getElementById('who').innerText = '👤 ' + username;
+    hideLogin();
+    loadStats();
+  }
+
+  function logout() {
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+    localStorage.removeItem('username');
+    document.getElementById('who').innerText = '';
+    showLogin('You have been logged out.');
+  }
+
+  async function refreshAccess() {
+    const refresh = localStorage.getItem('refresh');
+    if (!refresh) return false;
+    const res = await fetch('/api/auth/refresh/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh})
+    });
+    if (!res.ok) return false;
+    const data = await readJson(res);
+    localStorage.setItem('access', data.access);
+    if (data.refresh) localStorage.setItem('refresh', data.refresh);
+    return true;
+  }
+
+  // fetch wrapper: adds the token, refreshes it once on 401, else asks the user to log in
+  async function api(url, opts = {}, retry = true) {
+    opts.headers = Object.assign({}, opts.headers || {});
+    const token = localStorage.getItem('access');
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, opts);
+    if (res.status === 401) {
+      if (retry && await refreshAccess()) return api(url, opts, false);
+      showLogin('Please log in to continue.');
+    }
+    return res;
+  }
+
+  function jsonPost(url, body) {
+    return api(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login_overlay').style.display === 'flex') login();
+  });
+
+  window.onload = function () {
+    if (localStorage.getItem('access')) {
+      document.getElementById('who').innerText = '👤 ' + (localStorage.getItem('username') || '');
+      loadStats();
+    } else {
+      showLogin();
+    }
+  };
+
+  // ---------- stats ----------
+  async function loadStats() {
+    try {
+      const res = await api('/api/candidates/');
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('total_candidates').innerText = data.length;
+      document.getElementById('total_shortlisted').innerText = data.filter(c => ['shortlisted', 'matched', 'ranked'].includes(c.status)).length;
+      document.getElementById('total_interviews').innerText = data.filter(c => c.status === 'interview_scheduled').length;
+      document.getElementById('total_rejected').innerText = data.filter(c => c.status === 'rejected').length;
+    } catch (e) {}
+  }
+
+  // ---------- resume upload ----------
   function readResume(input) {
     const file = input.files[0];
     if (!file) return;
+    const status = document.getElementById('pdf_status');
+    const name = file.name.toLowerCase();
 
-    if (file.name.endsWith('.txt')) {
+    if (name.endsWith('.txt')) {
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         document.getElementById('c_resume').value = e.target.result;
-        document.getElementById('pdf_status').style.display = 'block';
+        status.style.display = 'block';
+        status.style.color = '#4CAF50';
+        status.innerText = '✅ Resume loaded!';
       };
       reader.readAsText(file);
-    } else if (file.name.endsWith('.pdf')) {
+    } else if (name.endsWith('.pdf')) {
       const formData = new FormData();
       formData.append('resume', file);
-      fetch('/api/parse-resume/', {
-        method: 'POST',
-        body: formData
-      }).then(r => r.json()).then(data => {
-        document.getElementById('c_resume').value = data.text;
-        document.getElementById('pdf_status').style.display = 'block';
-      }).catch(() => {
-        document.getElementById('pdf_status').style.display = 'block';
-        document.getElementById('pdf_status').innerText = '⚠️ PDF parse failed, please type resume manually.';
-      });
+      api('/api/parse-resume/', {method: 'POST', body: formData})
+        .then(async r => ({ok: r.ok, data: await readJson(r)}))
+        .then(({ok, data}) => {
+          status.style.display = 'block';
+          if (ok) {
+            document.getElementById('c_resume').value = data.text;
+            status.style.color = '#4CAF50';
+            status.innerText = '✅ Resume uploaded successfully!';
+          } else {
+            status.style.color = '#c62828';
+            status.innerText = '⚠️ ' + errText(data);
+          }
+        })
+        .catch(() => {
+          status.style.display = 'block';
+          status.style.color = '#c62828';
+          status.innerText = '⚠️ Upload failed, please type resume manually.';
+        });
+    } else {
+      status.style.display = 'block';
+      status.style.color = '#c62828';
+      status.innerText = '⚠️ Only PDF or TXT files are supported.';
     }
   }
 
+  // ---------- create ----------
   async function addJob() {
-    const res = await fetch('/api/add-job/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        title: document.getElementById('job_title').value,
-        required_skills: document.getElementById('job_skills').value,
-        min_experience: document.getElementById('job_exp').value,
-        description: document.getElementById('job_desc').value
-      })
+    const res = await jsonPost('/api/add-job/', {
+      title: document.getElementById('job_title').value,
+      required_skills: document.getElementById('job_skills').value,
+      min_experience: document.getElementById('job_exp').value,
+      description: document.getElementById('job_desc').value
     });
-    const data = await res.json();
-    const el = document.getElementById('job_result');
-    el.style.display = 'block';
-    el.innerHTML = `✅ Job Added! ID: <b>${data.id}</b> — Use this ID in Step 3`;
+    const data = await readJson(res);
+    if (!res.ok) { showResult('job_result', errText(data), true); return; }
+    document.getElementById('p_job_id').value = data.id;
+    showResult('job_result', `✅ Job Added! ID: <b>${esc(data.id)}</b> — Use this ID in Step 3`);
     loadStats();
   }
 
   async function addCandidate() {
-    const res = await fetch('/api/add-candidate/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        name: document.getElementById('c_name').value,
-        email: document.getElementById('c_email').value,
-        phone: document.getElementById('c_phone').value,
-        skills: document.getElementById('c_skills').value,
-        experience: document.getElementById('c_exp').value,
-        resume_text: document.getElementById('c_resume').value
-      })
+    const res = await jsonPost('/api/add-candidate/', {
+      name: document.getElementById('c_name').value,
+      email: document.getElementById('c_email').value,
+      phone: document.getElementById('c_phone').value,
+      skills: document.getElementById('c_skills').value,
+      experience: document.getElementById('c_exp').value,
+      resume_text: document.getElementById('c_resume').value
     });
-    const data = await res.json();
-    const el = document.getElementById('candidate_result');
-    el.style.display = 'block';
-    el.innerHTML = `✅ Candidate Added! ID: <b>${data.id}</b> — Use this ID in Step 3`;
+    const data = await readJson(res);
+    if (!res.ok) { showResult('candidate_result', errText(data), true); return; }
+    document.getElementById('p_candidate_id').value = data.id;
+    showResult('candidate_result', `✅ Candidate Added! ID: <b>${esc(data.id)}</b> — Use this ID in Step 3`);
     loadStats();
   }
 
+  // ---------- pipeline ----------
   async function runPipeline() {
-    const el = document.getElementById('pipeline_result');
-    el.style.display = 'block';
-    el.innerHTML = '⏳ Running agents, please wait...';
-    const res = await fetch('/api/run-pipeline/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        candidate_id: document.getElementById('p_candidate_id').value,
-        job_id: document.getElementById('p_job_id').value
-      })
-    });
-    const data = await res.json();
-    el.innerHTML = `
+    const candidateId = document.getElementById('p_candidate_id').value;
+    const jobId = document.getElementById('p_job_id').value;
+    if (!candidateId || !jobId) {
+      showResult('pipeline_result', 'Enter both Candidate ID and Job ID.', true);
+      return;
+    }
+    showResult('pipeline_result', '⏳ Running agents, please wait...');
+    const res = await jsonPost('/api/run-pipeline/', {candidate_id: candidateId, job_id: jobId});
+    const data = await readJson(res);
+    if (!res.ok) {
+      showResult('pipeline_result',
+        res.status === 429 ? 'Too many pipeline runs. Wait a minute and try again.' :
+        res.status === 404 ? 'Candidate or Job ID not found.' : errText(data), true);
+      return;
+    }
+    showResult('pipeline_result', `
       <b>✅ Pipeline Complete!</b><br><br>
-      <b>Name:</b> ${data.name}<br>
-      <b>Status:</b> ${data.status}<br>
-      <b>Score:</b> ${data.score}<br>
-      <b>Interview:</b> ${data.interview_slot ? data.interview_slot.slot + ' via ' + data.interview_slot.platform : 'Not scheduled (rejected)'}
-    `;
+      <b>Name:</b> ${esc(data.name)}<br>
+      <b>Status:</b> ${esc(data.status)}<br>
+      <b>Score:</b> ${esc(data.score)}<br>
+      <b>Interview:</b> ${data.interview_slot ? esc(data.interview_slot.slot + ' via ' + data.interview_slot.platform) : 'Not scheduled (rejected)'}
+    `);
     loadStats();
+  }
+
+  // ---------- dashboards ----------
+  async function loadList(url, targetId) {
+    const res = await api(url);
+    if (!res.ok) {
+      document.getElementById(targetId).innerHTML = `<p class="error-text">❌ ${esc(errText(await readJson(res)))}</p>`;
+      return null;
+    }
+    return res.json();
   }
 
   async function loadCandidates() {
-    const res = await fetch('/api/candidates/');
-    const data = await res.json();
+    const data = await loadList('/api/candidates/', 'dashboard_content');
+    if (!data) return;
     let html = '<br><table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th><th>Interview</th></tr>';
     data.forEach(c => {
       html += `<tr>
-        <td>${c.id}</td>
-        <td>${c.name}</td>
-        <td>${c.email}</td>
-        <td>${c.phone}</td>
-        <td>${c.skills}</td>
-        <td>${c.experience}y</td>
-        <td>${c.score}</td>
-        <td><span class="badge ${c.status}">${c.status}</span></td>
-        <td>${c.interview_date ? c.interview_date.substring(0,16) : '-'}</td>
+        <td>${esc(c.id)}</td>
+        <td>${esc(c.name)}</td>
+        <td>${esc(c.email)}</td>
+        <td>${esc(c.phone)}</td>
+        <td>${esc(c.skills)}</td>
+        <td>${esc(c.experience)}y</td>
+        <td>${esc(c.score)}</td>
+        <td><span class="badge ${esc(c.status)}">${esc(c.status)}</span></td>
+        <td>${c.interview_date ? esc(c.interview_date.substring(0, 16)) : '-'}</td>
       </tr>`;
     });
     html += '</table>';
@@ -248,16 +405,16 @@
   }
 
   async function loadJobs() {
-    const res = await fetch('/api/jobs/');
-    const data = await res.json();
+    const data = await loadList('/api/jobs/', 'dashboard_content');
+    if (!data) return;
     let html = '<br><table><tr><th>ID</th><th>Title</th><th>Required Skills</th><th>Min Exp</th><th>Description</th></tr>';
     data.forEach(j => {
       html += `<tr>
-        <td>${j.id}</td>
-        <td>${j.title}</td>
-        <td>${j.required_skills}</td>
-        <td>${j.min_experience}y</td>
-        <td>${j.description}</td>
+        <td>${esc(j.id)}</td>
+        <td>${esc(j.title)}</td>
+        <td>${esc(j.required_skills)}</td>
+        <td>${esc(j.min_experience)}y</td>
+        <td>${esc(j.description)}</td>
       </tr>`;
     });
     html += '</table>';
@@ -265,15 +422,15 @@
   }
 
   async function loadLogs() {
-    const res = await fetch('/api/logs/');
-    const data = await res.json();
+    const data = await loadList('/api/logs/', 'dashboard_content');
+    if (!data) return;
     let html = '<br><table><tr><th>Candidate</th><th>From Agent</th><th>To Agent</th><th>Message</th></tr>';
     data.forEach(l => {
       html += `<tr>
-        <td>${l.candidate__name}</td>
-        <td>${l.from_agent}</td>
-        <td>${l.to_agent}</td>
-        <td>${l.message}</td>
+        <td>${esc(l.candidate__name)}</td>
+        <td>${esc(l.from_agent)}</td>
+        <td>${esc(l.to_agent)}</td>
+        <td>${esc(l.message)}</td>
       </tr>`;
     });
     html += '</table>';
@@ -281,8 +438,8 @@
   }
 
   async function loadInterviews() {
-    const res = await fetch('/api/candidates/');
-    const data = await res.json();
+    const data = await loadList('/api/candidates/', 'interview_dashboard');
+    if (!data) return;
     const scheduled = data.filter(c => c.status === 'interview_scheduled');
     if (scheduled.length === 0) {
       document.getElementById('interview_dashboard').innerHTML = '<p>No interviews scheduled yet. Run the pipeline first.</p>';
@@ -290,14 +447,15 @@
     }
     let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Interview Date</th><th>Meet Link</th></tr>';
     scheduled.forEach(c => {
+      const slug = encodeURIComponent(c.name.toLowerCase().replace(/ /g, '-'));
       html += `<tr>
-        <td>${c.id}</td>
-        <td>${c.name}</td>
-        <td>${c.email}</td>
-        <td>${c.phone}</td>
-        <td><span class="badge interview_scheduled">${c.status}</span></td>
-        <td>${c.interview_date ? c.interview_date.substring(0,16) : '-'}</td>
-        <td><a href="https://meet.google.com/recruitment-${c.name.toLowerCase().replace(' ','-')}" target="_blank">Join Meet</a></td>
+        <td>${esc(c.id)}</td>
+        <td>${esc(c.name)}</td>
+        <td>${esc(c.email)}</td>
+        <td>${esc(c.phone)}</td>
+        <td><span class="badge interview_scheduled">${esc(c.status)}</span></td>
+        <td>${c.interview_date ? esc(c.interview_date.substring(0, 16)) : '-'}</td>
+        <td><a href="https://meet.google.com/recruitment-${slug}" target="_blank" rel="noopener">Join Meet</a></td>
       </tr>`;
     });
     html += '</table>';
@@ -305,23 +463,23 @@
   }
 
   async function loadRanking() {
-    const res = await fetch('/api/candidates/');
-    const data = await res.json();
-    const ranked = data.filter(c => c.score > 0).sort((a,b) => b.score - a.score);
+    const data = await loadList('/api/candidates/', 'ranking_dashboard');
+    if (!data) return;
+    const ranked = data.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
     if (ranked.length === 0) {
       document.getElementById('ranking_dashboard').innerHTML = '<p>No candidates ranked yet. Run the pipeline first.</p>';
       return;
     }
     let html = '<table><tr><th>Rank</th><th>Name</th><th>Skills</th><th>Experience</th><th>Score</th><th>Status</th></tr>';
     ranked.forEach((c, i) => {
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
       html += `<tr>
         <td>${medal}</td>
-        <td>${c.name}</td>
-        <td>${c.skills}</td>
-        <td>${c.experience}y</td>
-        <td><b>${c.score}</b></td>
-        <td><span class="badge ${c.status}">${c.status}</span></td>
+        <td>${esc(c.name)}</td>
+        <td>${esc(c.skills)}</td>
+        <td>${esc(c.experience)}y</td>
+        <td><b>${esc(c.score)}</b></td>
+        <td><span class="badge ${esc(c.status)}">${esc(c.status)}</span></td>
       </tr>`;
     });
     html += '</table>';
