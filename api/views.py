@@ -1,6 +1,6 @@
-import io
 import logging
 
+from django.db import transaction
 from django.shortcuts import render, get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, throttle_classes
@@ -10,11 +10,23 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .agents import run_full_pipeline
 from .models import Candidate, Job, AgentLog
+from .resume_parser import (
+    ALLOWED_EXTENSIONS,
+    ResumeParseError,
+    UnsupportedResumeType,
+    chunk_resume,
+    extract_email,
+    extract_phone,
+    extract_text,
+    parse_skill_list,
+    split_sections,
+)
 from .serializers import (
     CandidateCreateSerializer,
     JobCreateSerializer,
     PipelineRequestSerializer,
 )
+from .services import rebuild_resume_chunks
 from .throttles import PipelineThrottle
 
 logger = logging.getLogger(__name__)
@@ -22,7 +34,7 @@ logger = logging.getLogger(__name__)
 MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
-
+# Homepage (public: it only serves the HTML shell; all data comes from protected APIs)
 def index(request):
     return render(request, 'index.html')
 
@@ -44,8 +56,11 @@ def me(request):
 def add_candidate(request):
     serializer = CandidateCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    c = serializer.save()
-    return Response({'id': c.id, 'message': 'Candidate added!'}, status=status.HTTP_201_CREATED)
+    with transaction.atomic():
+        c = serializer.save()
+        chunk_count = rebuild_resume_chunks(c)
+    return Response({'id': c.id, 'message': 'Candidate added!', 'chunks': chunk_count},
+                    status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -98,29 +113,32 @@ def get_logs(request):
 # ---------- Resume parsing ----------
 @api_view(['POST'])
 def parse_resume(request):
-    import PyPDF2
-
-    pdf_file = request.FILES.get('resume')
-    if not pdf_file:
+    """Upload a PDF / DOCX / TXT resume -> clean text + detected sections, contact and skills."""
+    resume_file = request.FILES.get('resume')
+    if not resume_file:
         return Response({'detail': "No file uploaded (form field name must be 'resume')."},
                         status=status.HTTP_400_BAD_REQUEST)
-    if not pdf_file.name.lower().endswith('.pdf'):
-        return Response({'detail': 'Only PDF files are supported.'},
+    if not resume_file.name.lower().endswith(ALLOWED_EXTENSIONS):
+        return Response({'detail': 'Only PDF, DOCX or TXT files are supported.'},
                         status=status.HTTP_400_BAD_REQUEST)
-    if pdf_file.size > MAX_RESUME_BYTES:
+    if resume_file.size > MAX_RESUME_BYTES:
         return Response({'detail': 'File too large (max 5 MB).'},
                         status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        reader = PyPDF2.PdfReader(io.BytesIO(pdf_file.read()))
-        text = '\n'.join((page.extract_text() or '') for page in reader.pages)
-    except Exception:
-        logger.exception('PDF parsing failed')
-        return Response({'detail': 'Could not read this PDF. It may be corrupted or encrypted.'},
-                        status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        text = extract_text(resume_file.read(), resume_file.name)
+    except UnsupportedResumeType as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except ResumeParseError as exc:
+        logger.warning('Resume parsing failed for %s: %s', resume_file.name, exc)
+        return Response({'detail': str(exc)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-    if not text.strip():
-        return Response({'detail': 'No text found in this PDF (scanned image?). Paste the text manually.'},
-                        status=status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-    return Response({'text': text})
+    sections = split_sections(text)
+    return Response({
+        'text': text,
+        'sections': [name for name in sections if name != 'header'],
+        'email': extract_email(text),
+        'phone': extract_phone(text),
+        'skills': parse_skill_list(sections.get('skills', '')),
+        'chunk_count': len(chunk_resume(text)),
+    })
