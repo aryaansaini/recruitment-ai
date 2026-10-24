@@ -102,8 +102,8 @@
   <input id="c_phone" placeholder="Phone" />
   <input id="c_skills" placeholder="Skills (e.g. Python, Django, React)" />
   <input id="c_exp" placeholder="Experience (years)" type="number" />
-  <span class="upload-label">📄 Upload Resume (PDF or TXT):</span>
-  <input type="file" id="c_resume_file" accept=".pdf,.txt" onchange="readResume(this)" />
+  <span class="upload-label">📄 Upload Resume (PDF, DOCX or TXT):</span>
+  <input type="file" id="c_resume_file" accept=".pdf,.docx,.txt" onchange="readResume(this)" />
   <div class="pdf-status" id="pdf_status">✅ Resume uploaded successfully!</div>
   <textarea id="c_resume" placeholder="Resume text will appear here after upload, or type manually..." rows="5"></textarea>
   <button onclick="addCandidate()">Add Candidate</button>
@@ -278,41 +278,45 @@
     const status = document.getElementById('pdf_status');
     const name = file.name.toLowerCase();
 
-    if (name.endsWith('.txt')) {
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        document.getElementById('c_resume').value = e.target.result;
-        status.style.display = 'block';
-        status.style.color = '#4CAF50';
-        status.innerText = '✅ Resume loaded!';
-      };
-      reader.readAsText(file);
-    } else if (name.endsWith('.pdf')) {
-      const formData = new FormData();
-      formData.append('resume', file);
-      api('/api/parse-resume/', {method: 'POST', body: formData})
-        .then(async r => ({ok: r.ok, data: await readJson(r)}))
-        .then(({ok, data}) => {
-          status.style.display = 'block';
-          if (ok) {
-            document.getElementById('c_resume').value = data.text;
-            status.style.color = '#4CAF50';
-            status.innerText = '✅ Resume uploaded successfully!';
-          } else {
-            status.style.color = '#c62828';
-            status.innerText = '⚠️ ' + errText(data);
-          }
-        })
-        .catch(() => {
-          status.style.display = 'block';
-          status.style.color = '#c62828';
-          status.innerText = '⚠️ Upload failed, please type resume manually.';
-        });
-    } else {
+    if (!['.pdf', '.docx', '.txt'].some(ext => name.endsWith(ext))) {
       status.style.display = 'block';
       status.style.color = '#c62828';
-      status.innerText = '⚠️ Only PDF or TXT files are supported.';
+      status.innerText = '⚠️ Only PDF, DOCX or TXT files are supported.';
+      return;
     }
+
+    status.style.display = 'block';
+    status.style.color = '#555';
+    status.innerText = '⏳ Reading resume...';
+
+    const formData = new FormData();
+    formData.append('resume', file);
+    api('/api/parse-resume/', {method: 'POST', body: formData})
+      .then(async r => ({ok: r.ok, data: await readJson(r)}))
+      .then(({ok, data}) => {
+        if (!ok) {
+          status.style.color = '#c62828';
+          status.innerText = '⚠️ ' + errText(data);
+          return;
+        }
+        document.getElementById('c_resume').value = data.text;
+        // auto-fill only the empty fields so nothing the user typed is overwritten
+        const fill = (id, value) => {
+          const el = document.getElementById(id);
+          if (value && !el.value.trim()) el.value = value;
+        };
+        fill('c_email', data.email);
+        fill('c_phone', data.phone);
+        fill('c_skills', (data.skills || []).join(', '));
+        status.style.color = '#4CAF50';
+        status.innerText = '✅ Resume read! Sections found: ' +
+          (data.sections.length ? data.sections.join(', ') : 'none (plain text)') +
+          ' | ' + data.chunk_count + ' chunks. Please check the auto-filled fields.';
+      })
+      .catch(() => {
+        status.style.color = '#c62828';
+        status.innerText = '⚠️ Upload failed, please type resume manually.';
+      });
   }
 
   // ---------- create ----------
@@ -370,7 +374,7 @@
       <b>Score:</b> ${esc(data.score)}<br>
       <b>AI reason:</b> ${esc(data.reason)}<br>
       ${data.fallback_used ? '<span class="error-text">⚠️ AI was unavailable: this result used the rule-based fallback.</span><br>' : ''}
-      <b>Interview:</b>
+      <b>Interview:</b> ${data.interview_slot ? esc(data.interview_slot.slot + ' via ' + data.interview_slot.platform) : 'Not scheduled (rejected)'}
     `);
     loadStats();
   }

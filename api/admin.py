@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Candidate, Job, Application, AgentLog
+from .models import Candidate, Job, Application, AgentLog, ResumeChunk
 
 
 @admin.register(Candidate)
@@ -25,3 +25,10 @@ class ApplicationAdmin(admin.ModelAdmin):
 class AgentLogAdmin(admin.ModelAdmin):
     list_display = ('from_agent', 'to_agent', 'candidate', 'timestamp')
     list_filter = ('from_agent',)
+
+
+@admin.register(ResumeChunk)
+class ResumeChunkAdmin(admin.ModelAdmin):
+    list_display = ('candidate', 'section', 'chunk_index', 'created_at')
+    list_filter = ('section',)
+    search_fields = ('text', 'candidate__name')
