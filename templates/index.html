@@ -1,497 +1,414 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>AI Recruitment Assistant</title>
-  <style>
-    body { font-family: Arial; max-width: 950px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
-    h1 { color: #222; }
-    h2 { color: #444; border-bottom: 2px solid #222; padding-bottom: 5px; }
-    input, textarea, select { width: 100%; padding: 8px; margin: 5px 0 10px 0; box-sizing: border-box; border: 1px solid #ccc; }
-    input[type="file"] { background: white; padding: 10px; border: 2px dashed #ccc; cursor: pointer; }
-    button { background: #222; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-right: 5px; margin-top: 10px; }
-    button:hover { background: #444; }
-    .section { background: white; padding: 20px; margin-bottom: 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .result { background: #f0f0f0; padding: 12px; margin-top: 10px; border-left: 4px solid #222; display:none; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
-    th { background: #222; color: white; }
-    .badge { padding: 3px 8px; border-radius: 3px; font-size: 12px; color: white; }
-    .pending { background: #999; }
-    .shortlisted { background: #2196F3; }
-    .matched { background: #FF9800; }
-    .ranked { background: #9C27B0; }
-    .interview_scheduled { background: #4CAF50; }
-    .rejected { background: #f44336; }
-    a { color: #2196F3; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    td b { color: #222; font-size: 15px; }
-    td:first-child { text-align: center; }
-    .upload-label { font-size: 13px; color: #666; margin-bottom: 5px; display: block; }
-    .pdf-status { font-size: 13px; color: #4CAF50; margin-top: -8px; margin-bottom: 8px; display:none; }
-    .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .nav a { background: #222; color: white; padding: 8px 16px; border-radius: 3px; text-decoration: none; font-size: 14px; }
-    .nav a:hover { background: #444; }
-    .stats { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat-box { background: white; padding: 15px 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; flex: 1; }
-    .stat-box h3 { margin: 0; font-size: 28px; color: #222; }
-    .stat-box p { margin: 5px 0 0 0; font-size: 13px; color: #666; }
-    /* login overlay */
-    #login_overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    #login_box { background: white; padding: 30px; border-radius: 6px; width: 340px; max-width: 90%; }
-    #login_box h2 { margin-top: 0; }
-    #login_error { color: #c62828; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-    .topbar .who { font-size: 13px; color: #555; }
-    .topbar button { margin-top: 0; padding: 6px 12px; font-size: 13px; }
-    .error-text { color: #c62828; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Recruitment Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f1;--surf:#fff;--surf2:#f6f8f7;--text:#13232b;--muted:#5f7078;--line:#dde4e2;--brand:#0f766e;--brand2:#0b5c56;--on:#fff;--soft:#d9f0ec;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--blue:#1d4ed8;--vio:#7e22ce;--r:16px;--sh:0 1px 2px rgba(19,35,43,.06),0 8px 24px -12px rgba(19,35,43,.18);--side:232px}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1417;--surf:#142026;--surf2:#1a2a31;--text:#e6f0ee;--muted:#8fa4a9;--line:#263840;--brand:#2dd4bf;--brand2:#5eead4;--on:#042f2a;--soft:#12403c;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--blue:#60a5fa;--vio:#c084fc;--sh:0 8px 24px -12px rgba(0,0,0,.6)}}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(800px 400px at 85% -5%,color-mix(in srgb,var(--brand) 16%,transparent),transparent),radial-gradient(600px 400px at 0 100%,color-mix(in srgb,var(--vio) 9%,transparent),transparent)}
+.hero{border-radius:20px;padding:26px 28px;margin-bottom:16px;color:var(--on);background:linear-gradient(115deg,var(--brand2),var(--brand));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 18px 40px -20px var(--brand)}
+.hero h2{margin:0;font-size:clamp(20px,2.4vw,26px);letter-spacing:-.02em}.hero p{margin:6px 0 0;opacity:.85;max-width:52ch}
+.hero .acts{display:flex;gap:10px;flex-wrap:wrap}
+.hero button{border:0;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer;background:var(--on);color:var(--brand2);min-height:44px}
+.hero button.o{background:rgba(255,255,255,.18);color:inherit;border:1px solid rgba(255,255,255,.4)}
+.fun{display:grid;grid-template-columns:130px 1fr 28px;gap:10px;align-items:center;margin:10px 0}.fun .bar{height:10px}.fun b{text-align:right}
+.tl .item{position:relative;border:0;padding:10px 0}.tl .item:not(:last-child)::after{content:"";position:absolute;left:16px;top:46px;bottom:-10px;width:2px;background:var(--line)}
+.stat .ic{background:color-mix(in srgb,var(--c,var(--brand)) 18%,transparent)}
+tbody tr:hover td{background:var(--surf2)}
+.btn{background:linear-gradient(135deg,var(--brand),var(--brand2))}
+.logo i{box-shadow:0 6px 16px -4px var(--brand)}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14px/1.55 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+/* shell */
+.side{position:fixed;inset:0 auto 0 0;width:var(--side);background:var(--surf);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 12px;z-index:20}
+.logo{display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-weight:800;font-size:15px;line-height:1.2}
+.logo i{width:36px;height:36px;border-radius:11px;background:var(--brand);color:var(--on);display:grid;place-items:center;font-style:normal;font-size:18px;flex:none}
+.logo small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.nav{display:flex;flex-direction:column;gap:4px}
+.tab{display:flex;align-items:center;gap:12px;background:none;border:0;border-radius:12px;padding:11px 12px;cursor:pointer;color:var(--muted);font-weight:600;text-align:left;width:100%}
+.tab span.i{font-size:18px;width:22px;text-align:center}
+.tab:hover{background:var(--surf2);color:var(--text)}
+.tab.active{background:var(--soft);color:var(--brand2)}
+.side .me{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.me b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.me small{color:var(--muted)}
+.me div{min-width:0;flex:1}
+.wrap{margin-left:var(--side);padding:28px clamp(16px,3vw,48px) 48px}
+.wrap>*{max-width:1500px;margin-left:auto;margin-right:auto}
+
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:22px}
+.top h1{margin:0;font-size:clamp(22px,3vw,30px);letter-spacing:-.02em;line-height:1.15}
+.top p{margin:4px 0 0;color:var(--muted)}
+.view{display:none}.view.active{display:block}
+.av{width:34px;height:34px;border-radius:50%;background:var(--soft);color:var(--brand2);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+/* cards */
+.grid{display:grid;gap:16px}
+.stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.two{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}
+.even{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--sh);min-width:0}
+.card h2{font-size:16px;margin:0 0 14px;letter-spacing:-.01em}
+.stat{display:flex;gap:12px;align-items:center;padding:16px}
+.stat .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:19px;flex:none;background:var(--soft)}
+.stat b{font-size:24px;line-height:1;display:block;letter-spacing:-.02em}.stat span{color:var(--muted);font-size:12px}
+/* forms */
+label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px}
+input,textarea,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surf2);font-size:16px;min-height:44px}
+@media(min-width:900px){input,textarea,select{font-size:14px}}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;background:var(--surf)}
+textarea{resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:var(--on);border:0;border-radius:12px;padding:12px 20px;cursor:pointer;font-weight:700;margin-top:18px;min-height:46px;transition:transform .1s,background .15s}
+.btn:hover{background:var(--brand2);color:#fff}.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.6;cursor:wait}.btn.full{width:100%}
+.ghost{background:none;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--muted);font-weight:600}
+.ghost:hover{color:var(--text);border-color:var(--muted)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.filters{display:flex;gap:10px;margin-bottom:12px}.filters input{flex:2}.filters select{flex:1;min-width:130px}
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;color:var(--muted);background:var(--surf2);transition:.15s}
+.drop b{color:var(--text);display:block}.drop small{display:block;margin-top:2px}
+.drop.over,.drop:hover{border-color:var(--brand);background:var(--soft)}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.empty{color:var(--muted);padding:28px 12px;text-align:center}
+/* table → cards on phone */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.who{display:flex;align-items:center;gap:10px}.who small{display:block;color:var(--muted);font-size:12px;word-break:break-all}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--surf2);color:var(--muted)}
+.shortlisted{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.matched{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.ranked{background:color-mix(in srgb,var(--vio) 16%,transparent);color:var(--vio)}
+.interview_scheduled{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.rejected{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.ring{--p:0;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--brand) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
+.ring b{width:36px;height:36px;border-radius:50%;background:var(--surf);display:grid;place-items:center;font-size:12px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:99px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}.chip{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:1px 8px;font-size:12px}
+/* lists */
+.item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}
+.item .t{min-width:0;flex:1}.item small{color:var(--muted);display:block;overflow-wrap:anywhere}
+.item a{color:var(--brand2);font-weight:600}
+/* pipeline */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
+.step{background:var(--surf2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;font-size:12px;font-weight:600;color:var(--muted)}
+.step span{display:block;font-size:20px;margin-bottom:2px}
+.run .step{animation:pulse 1s infinite alternate}.run .step:nth-child(2){animation-delay:.2s}.run .step:nth-child(3){animation-delay:.4s}.run .step:nth-child(4){animation-delay:.6s}
+.done .step{background:var(--soft);border-color:var(--brand);color:var(--brand2)}
+@keyframes pulse{to{border-color:var(--brand);color:var(--brand2);background:var(--soft)}}
+.res{margin-top:20px;padding:16px;border-radius:14px;background:var(--surf2);border:1px solid var(--line)}
+.warnbox{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+/* toast + login */
+#toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px))}
+.toast{padding:12px 16px;border-radius:12px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3);font-weight:600}.toast.ok{background:#15803d}.toast.err{background:#b91c1c}
+#login_overlay{position:fixed;inset:0;background:linear-gradient(135deg,rgba(11,92,86,.92),rgba(19,35,43,.96));display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+#login_box{background:var(--surf);padding:32px 28px;border-radius:20px;width:380px;max-width:100%}
+#login_box h2{margin:0 0 4px;font-size:22px}#login_box p{margin:0;color:var(--muted)}
+#login_error{color:var(--bad);font-size:13px;min-height:20px;margin-top:8px}
+/* responsive */
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:1fr}}
+@media(max-width:900px){
+ :root{--side:0px}
+ .side{inset:auto 0 0 0;width:auto;height:auto;flex-direction:row;padding:6px 8px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.08)}
+ .logo,.side .me{display:none}
+ .nav{flex-direction:row;width:100%;justify-content:space-around}
+ .tab{flex-direction:column;gap:2px;padding:6px 4px;font-size:11px;text-align:center;justify-content:center;border-radius:10px}
+ .wrap{padding:calc(18px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom))}
+ .top{align-items:center}
+}
+@media(max-width:700px){
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats .stat:last-child{grid-column:1/-1}
+ .even{grid-template-columns:1fr}.filters{flex-direction:column}
+ .card{padding:16px}
+ table,tbody,tr,td{display:block}thead,tr:has(th){display:none}
+ tr{padding:12px 0;border-bottom:1px solid var(--line)}tr:last-child{border-bottom:0}
+ td{display:flex;justify-content:space-between;gap:12px;border:0;padding:4px 0;text-align:right}
+ td::before{content:attr(data-l);color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none}
+ td.nm{display:block;text-align:left}td.nm::before{display:none}
+ td .chips{justify-content:flex-end}
+ .steps{grid-template-columns:repeat(2,1fr)}
+ #toasts{left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:none}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
 
-<!-- Login -->
-<div id="login_overlay">
-  <div id="login_box">
-    <h2>🔐 Recruiter Login</h2>
-    <input id="login_user" placeholder="Username" autocomplete="username" />
-    <input id="login_pass" placeholder="Password" type="password" autocomplete="current-password" />
-    <div id="login_error"></div>
-    <button onclick="login()" style="width:100%; margin:0;">Login</button>
-  </div>
-</div>
+<div id="login_overlay"><div id="login_box">
+  <h2>Recruiter login</h2><p>Sign in to manage candidates and jobs.</p>
+  <label class="f">Username</label><input id="login_user" autocomplete="username">
+  <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password">
+  <div id="login_error" role="alert"></div>
+  <button class="btn full" style="margin-top:6px" onclick="login()">Log in</button>
+</div></div>
 
-<div class="topbar">
-  <h1>🤖 AI Recruitment Assistant</h1>
-  <div class="who"><span id="who"></span> <button onclick="logout()">Logout</button></div>
-</div>
-<p>4 Agents: Resume Screening → Job Matching → Candidate Ranking → Interview Scheduling</p>
+<aside class="side">
+  <div class="logo"><i>🤖</i><div>Recruit AI<small>Hiring assistant</small></div></div>
+  <nav class="nav" id="tabs">
+    <button class="tab" data-t="overview"><span class="i">📊</span>Overview</button>
+    <button class="tab" data-t="jobs"><span class="i">📋</span>Jobs</button>
+    <button class="tab" data-t="candidates"><span class="i">👤</span>Candidates</button>
+    <button class="tab" data-t="pipeline"><span class="i">⚙️</span>Pipeline</button>
+    <button class="tab" data-t="rankings"><span class="i">🏆</span>Rankings</button>
+  </nav>
+  <div class="me"><span class="av" id="av">?</span><div><b id="who"></b><small>Recruiter</small></div><button class="ghost" onclick="logout()" title="Log out">Log out</button></div>
+</aside>
 
-<!-- Navigation -->
-<div class="nav">
-  <a href="#add-job">📋 Add Job</a>
-  <a href="#add-candidate">👤 Add Candidate</a>
-  <a href="#pipeline">⚙️ Run Pipeline</a>
-  <a href="#dashboard">📊 Dashboard</a>
-  <a href="#interviews">📅 Interviews</a>
-  <a href="#ranking">🏆 Rankings</a>
-</div>
+<div class="wrap">
+  <div class="top"><div><h1 id="title">Overview</h1><p id="sub"></p></div><button class="ghost" id="mlogout" onclick="logout()" style="display:none">Log out</button></div>
 
-<!-- Stats -->
-<div class="stats" id="stats">
-  <div class="stat-box"><h3 id="total_candidates">0</h3><p>Total Candidates</p></div>
-  <div class="stat-box"><h3 id="total_shortlisted">0</h3><p>Shortlisted</p></div>
-  <div class="stat-box"><h3 id="total_interviews">0</h3><p>Interviews Scheduled</p></div>
-  <div class="stat-box"><h3 id="total_rejected">0</h3><p>Rejected</p></div>
-</div>
+  <section class="view" id="v-overview">
+    <div class="hero"><div><h2 id="hello"></h2><p id="hsub"></p></div>
+      <div class="acts"><button onclick="show('candidates')">Add candidate</button><button class="o" onclick="show('pipeline')">Run pipeline</button></div></div>
+    <div class="grid stats" id="stats"></div>
+    <div class="grid even" style="margin-top:16px;align-items:start">
+      <div class="grid" style="gap:16px">
+        <div class="card"><h2>Hiring funnel</h2><div id="funnel"></div></div>
+        <div class="card"><h2>Scheduled interviews</h2><div id="ov_int"></div></div>
+      </div>
+      <div class="card"><h2>Recent agent activity</h2><div id="ov_logs" class="tl"></div></div>
+    </div>
+  </section>
 
-<!-- Add Job -->
-<div class="section" id="add-job">
-  <h2>📋 Step 1: Add Job (ATS MCP)</h2>
-  <input id="job_title" placeholder="Job Title (e.g. Backend Developer)" />
-  <input id="job_skills" placeholder="Required Skills (e.g. Python, Django, SQL)" />
-  <input id="job_exp" placeholder="Min Experience (years)" type="number" />
-  <textarea id="job_desc" placeholder="Job Description" rows="3"></textarea>
-  <button onclick="addJob()">Add Job</button>
-  <div id="job_result" class="result"></div>
-</div>
+  <section class="view" id="v-jobs">
+    <div class="grid two">
+      <div class="card"><h2>Add a job</h2>
+        <label class="f" style="margin-top:0">Title</label><input id="job_title" placeholder="Backend Developer">
+        <label class="f">Required skills</label><input id="job_skills" placeholder="Python, Django, SQL">
+        <label class="f">Minimum experience (years)</label><input id="job_exp" type="number" min="0" value="0" inputmode="numeric">
+        <label class="f">Description</label><textarea id="job_desc" rows="4"></textarea>
+        <button class="btn full" onclick="addJob(this)">Add job</button>
+      </div>
+      <div class="card"><h2>All jobs</h2><div id="jobs_list"></div></div>
+    </div>
+  </section>
 
-<!-- Add Candidate -->
-<div class="section" id="add-candidate">
-  <h2>👤 Step 2: Add Candidate — Candidate Screening Portal (Resume Parser MCP)</h2>
-  <input id="c_name" placeholder="Full Name" />
-  <input id="c_email" placeholder="Email" />
-  <input id="c_phone" placeholder="Phone" />
-  <input id="c_skills" placeholder="Skills (e.g. Python, Django, React)" />
-  <input id="c_exp" placeholder="Experience (years)" type="number" />
-  <span class="upload-label">📄 Upload Resume (PDF, DOCX or TXT):</span>
-  <input type="file" id="c_resume_file" accept=".pdf,.docx,.txt" onchange="readResume(this)" />
-  <div class="pdf-status" id="pdf_status">✅ Resume uploaded successfully!</div>
-  <textarea id="c_resume" placeholder="Resume text will appear here after upload, or type manually..." rows="5"></textarea>
-  <button onclick="addCandidate()">Add Candidate</button>
-  <div id="candidate_result" class="result"></div>
-</div>
+  <section class="view" id="v-candidates">
+    <div class="grid two">
+      <div class="card"><h2>Add a candidate</h2>
+        <label class="drop" id="drop"><input type="file" id="file" accept=".pdf,.docx,.txt" hidden>
+          <b>Drop a resume here or tap to browse</b><small>PDF, DOCX or TXT, max 5 MB. Fields fill automatically.</small></label>
+        <div class="hint" id="upmsg" aria-live="polite"></div>
+        <label class="f">Full name</label><input id="c_name" autocomplete="name">
+        <div class="row"><div><label class="f">Email</label><input id="c_email" type="email" inputmode="email"></div><div><label class="f">Phone</label><input id="c_phone" type="tel" inputmode="tel"></div></div>
+        <div class="row"><div><label class="f">Skills</label><input id="c_skills" placeholder="Python, Django"></div><div><label class="f">Experience (years)</label><input id="c_exp" type="number" min="0" value="0" inputmode="numeric"></div></div>
+        <label class="f">Resume text</label><textarea id="c_resume" rows="5" placeholder="Filled after upload, or paste it here"></textarea>
+        <button class="btn full" onclick="addCandidate(this)">Add candidate</button>
+      </div>
+      <div class="card"><h2>All candidates</h2>
+        <div class="filters"><input id="q" placeholder="Search name or skills" oninput="renderCands()">
+          <select id="sf" onchange="renderCands()"><option value="">All statuses</option><option>pending</option><option>shortlisted</option><option>matched</option><option>ranked</option><option>interview_scheduled</option><option>rejected</option></select></div>
+        <div id="cands_list"></div>
+      </div>
+    </div>
+  </section>
 
-<!-- Run Pipeline -->
-<div class="section" id="pipeline">
-  <h2>⚙️ Step 3: Run AI Pipeline (A2A Communication)</h2>
-  <p style="font-size:13px; color:#666;">
-    Agent 1 (Resume Screening) → Agent 2 (Job Matching) → Agent 3 (Ranking) → Agent 4 (Interview Scheduling)
-  </p>
-  <input id="p_candidate_id" placeholder="Candidate ID (from Step 2)" type="number" />
-  <input id="p_job_id" placeholder="Job ID (from Step 1)" type="number" />
-  <button onclick="runPipeline()">🚀 Run All 4 Agents</button>
-  <div id="pipeline_result" class="result"></div>
-</div>
+  <section class="view" id="v-pipeline">
+    <div class="grid two">
+      <div class="card"><h2>Choose who and what</h2>
+        <label class="f" style="margin-top:0">Candidate</label><select id="p_cand"></select>
+        <label class="f">Job</label><select id="p_job"></select>
+        <button class="btn full" onclick="runPipeline(this)">🚀 Run all 4 agents</button>
+        <p class="hint">The agents screen the resume, match it to the job, rank the candidate and book an interview slot.</p>
+      </div>
+      <div class="card"><h2>Agent progress</h2>
+        <div class="steps" id="steps" style="margin-top:0"><div class="step"><span>🔎</span>Screening</div><div class="step"><span>🧩</span>Matching</div><div class="step"><span>📈</span>Ranking</div><div class="step"><span>📅</span>Scheduling</div></div>
+        <div id="p_result"><div class="empty">Results will show here after you run the pipeline.</div></div>
+      </div>
+    </div>
+  </section>
 
-<!-- Recruiter Dashboard -->
-<div class="section" id="dashboard">
-  <h2>📊 Recruiter Dashboard</h2>
-  <button onclick="loadCandidates()">View All Candidates</button>
-  <button onclick="loadLogs()">View A2A Logs</button>
-  <button onclick="loadJobs()">View All Jobs</button>
-  <div id="dashboard_content"></div>
+  <section class="view" id="v-rankings">
+    <div class="card"><h2>Candidate leaderboard</h2><div id="rank_list"></div></div>
+  </section>
 </div>
-
-<!-- Interview Scheduler -->
-<div class="section" id="interviews">
-  <h2>📅 Interview Scheduler (Calendar MCP)</h2>
-  <button onclick="loadInterviews()">Load Scheduled Interviews</button>
-  <div id="interview_dashboard"></div>
-</div>
-
-<!-- Candidate Ranking Dashboard -->
-<div class="section" id="ranking">
-  <h2>🏆 Candidate Ranking Dashboard</h2>
-  <button onclick="loadRanking()">Load Rankings</button>
-  <div id="ranking_dashboard"></div>
-</div>
+<div id="toasts"></div>
 
 <script>
-  // ---------- helpers ----------
-  function esc(v) {
-    return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, ch =>
-      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  }
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const errText = d => !d ? 'Unknown error' : d.detail || Object.entries(d).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(' ') : v)).join(' | ');
+const readJson = async r => { try { return await r.json(); } catch (e) { return {}; } };
+const badge = s => `<span class="badge ${esc(s)}">${esc(String(s).replace('_', ' '))}</span>`;
+const when = d => d ? esc(String(d).slice(0, 16).replace('T', ' ')) : '-';
+const empty = t => `<div class="empty">${t}</div>`;
+const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
+const ring = s => `<div class="ring" style="--p:${Math.min(100, +s || 0)}"><b>${esc(Math.round(s || 0))}</b></div>`;
 
-  function errText(data) {
-    if (!data) return 'Unknown error';
-    if (data.detail) return data.detail;
-    return Object.entries(data).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(' ') : v)).join(' | ');
-  }
+const TITLES = {overview: ['Overview', 'Hiring activity at a glance'], jobs: ['Jobs', 'Open roles and what they need'], candidates: ['Candidates', 'Upload resumes and track status'], pipeline: ['Pipeline', 'Screen, match, rank and schedule in one run'], rankings: ['Rankings', 'Best scores first']};
 
-  async function readJson(res) {
-    try { return await res.json(); } catch (e) { return {}; }
-  }
+function toast(msg, type = 'ok') {
+  const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg;
+  $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500);
+}
+async function busy(btn, fn) {
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…';
+  try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; }
+}
 
-  function showResult(id, html, isError) {
-    const el = document.getElementById(id);
-    el.style.display = 'block';
-    el.innerHTML = isError ? `<span class="error-text">❌ ${esc(html)}</span>` : html;
-  }
+// ---------- auth (JWT) ----------
+const showLogin = m => { $('login_overlay').style.display = 'flex'; $('login_error').textContent = m || ''; };
+async function login() {
+  const username = $('login_user').value.trim(), password = $('login_pass').value;
+  const res = await fetch('/api/auth/login/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password})});
+  const data = await readJson(res);
+  if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a minute.' : res.status === 401 ? 'Wrong username or password.' : errText(data); return; }
+  localStorage.setItem('access', data.access); localStorage.setItem('refresh', data.refresh); localStorage.setItem('username', username);
+  $('login_pass').value = ''; $('login_overlay').style.display = 'none'; start();
+}
+function logout() { ['access', 'refresh', 'username'].forEach(k => localStorage.removeItem(k)); $('who').textContent = ''; showLogin('You have been logged out.'); }
+async function refreshAccess() {
+  const refresh = localStorage.getItem('refresh'); if (!refresh) return false;
+  const res = await fetch('/api/auth/refresh/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({refresh})});
+  if (!res.ok) return false;
+  const d = await readJson(res); localStorage.setItem('access', d.access); if (d.refresh) localStorage.setItem('refresh', d.refresh); return true;
+}
+async function api(url, opts = {}, retry = true) {
+  opts.headers = Object.assign({}, opts.headers || {});
+  const t = localStorage.getItem('access'); if (t) opts.headers.Authorization = 'Bearer ' + t;
+  const res = await fetch(url, opts);
+  if (res.status === 401) { if (retry && await refreshAccess()) return api(url, opts, false); showLogin('Please log in to continue.'); }
+  return res;
+}
+const jsonPost = (url, body) => api(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && $('login_overlay').style.display === 'flex') login(); });
 
-  // ---------- auth (JWT) ----------
-  function showLogin(msg) {
-    document.getElementById('login_overlay').style.display = 'flex';
-    document.getElementById('login_error').innerText = msg || '';
-  }
-  function hideLogin() {
-    document.getElementById('login_overlay').style.display = 'none';
-  }
+// ---------- tabs ----------
+function show(name) {
+  if (!$('v-' + name)) name = 'overview';
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'v-' + name));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.t === name));
+  $('title').textContent = TITLES[name][0]; $('sub').textContent = TITLES[name][1];
+  location.hash = name; scrollTo(0, 0);
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); });
+const mq = matchMedia('(max-width:900px)');
+const syncLogout = () => $('mlogout').style.display = mq.matches ? '' : 'none';
+mq.addEventListener('change', syncLogout); syncLogout();
 
-  async function login() {
-    const username = document.getElementById('login_user').value.trim();
-    const password = document.getElementById('login_pass').value;
-    const res = await fetch('/api/auth/login/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password})
-    });
-    const data = await readJson(res);
-    if (!res.ok) {
-      document.getElementById('login_error').innerText =
-        res.status === 429 ? 'Too many attempts. Wait a minute and try again.' :
-        res.status === 401 ? 'Wrong username or password.' : errText(data);
-      return;
-    }
-    localStorage.setItem('access', data.access);
-    localStorage.setItem('refresh', data.refresh);
-    localStorage.setItem('username', username);
-    document.getElementById('login_pass').value = '';
-    document.getElementById('who').innerText = '👤 ' + username;
-    hideLogin();
-    loadStats();
-  }
+// ---------- data ----------
+let jobs = [], cands = [];
+const load = async url => { const r = await api(url); return r.ok ? r.json() : []; };
+async function refresh() {
+  const [j, c] = await Promise.all([load('/api/jobs/'), load('/api/candidates/')]);
+  jobs = j; cands = c; renderAll();
+}
+function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); }
 
-  function logout() {
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
-    localStorage.removeItem('username');
-    document.getElementById('who').innerText = '';
-    showLogin('You have been logged out.');
-  }
+function renderHero() {
+  const h = new Date().getHours(), u = localStorage.getItem('username') || '';
+  $('hello').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + (u ? ', ' + u : '');
+  const i = cands.filter(c => c.status === 'interview_scheduled').length;
+  $('hsub').textContent = cands.length ? `${cands.length} candidates across ${jobs.length} jobs. ${i} interview${i === 1 ? '' : 's'} scheduled.` : 'Add a job and a candidate, then run the pipeline.';
+}
+function renderFunnel() {
+  const st = [['pending', 'Pending', 'var(--muted)'], ['shortlisted', 'Shortlisted', 'var(--blue)'], ['matched', 'Matched', 'var(--warn)'], ['ranked', 'Ranked', 'var(--vio)'], ['interview_scheduled', 'Interview', 'var(--ok)'], ['rejected', 'Rejected', 'var(--bad)']];
+  const max = Math.max(1, ...st.map(([k]) => cands.filter(c => c.status === k).length));
+  $('funnel').innerHTML = st.map(([k, l, col]) => { const n = cands.filter(c => c.status === k).length; return `<div class="fun"><span>${l}</span><div class="bar"><i style="width:${n / max * 100}%;background:${col}"></i></div><b>${n}</b></div>`; }).join('');
+}
+function renderStats() {
+  const n = f => cands.filter(f).length;
+  const cards = [['📋', 'Jobs', jobs.length, 'var(--brand)'], ['👤', 'Candidates', cands.length, 'var(--vio)'],
+    ['✅', 'Shortlisted', n(c => ['shortlisted', 'matched', 'ranked'].includes(c.status)), 'var(--blue)'],
+    ['📅', 'Interviews', n(c => c.status === 'interview_scheduled'), 'var(--ok)'], ['🚫', 'Rejected', n(c => c.status === 'rejected'), 'var(--bad)']];
+  $('stats').innerHTML = cards.map(([i, l, v, c]) => `<div class="card stat"><div class="ic" style="--c:${c}">${i}</div><div><b>${v}</b><span>${l}</span></div></div>`).join('');
+}
+function renderJobs() {
+  $('jobs_list').innerHTML = !jobs.length ? empty('No jobs yet. Add your first job on the left.') :
+    '<table><tr><th>ID</th><th>Title</th><th>Skills</th><th>Min exp</th></tr>' +
+    jobs.map(j => `<tr><td data-l="ID">#${esc(j.id)}</td><td class="nm"><b>${esc(j.title)}</b></td><td data-l="Skills">${chips(j.required_skills)}</td><td data-l="Min exp">${esc(j.min_experience)} yrs</td></tr>`).join('') + '</table>';
+}
+function renderCands() {
+  const q = $('q').value.toLowerCase(), sf = $('sf').value;
+  const rows = cands.filter(c => (!sf || c.status === sf) && (!q || (c.name + ' ' + c.skills).toLowerCase().includes(q)));
+  $('cands_list').innerHTML = !rows.length ? empty(cands.length ? 'No candidate matches this filter.' : 'No candidates yet. Upload a resume to start.') :
+    '<table><tr><th>Candidate</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th></tr>' +
+    rows.map(c => `<tr><td class="nm"><div class="who"><span class="av">${ini(c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.email)}</small></div></div></td><td data-l="Skills">${chips(c.skills)}</td><td data-l="Experience">${esc(c.experience)} yrs</td><td data-l="Score">${esc(c.score)}</td><td data-l="Status">${badge(c.status)}</td></tr>`).join('') + '</table>';
+}
+function renderSelects() {
+  const keep = [$('p_cand').value, $('p_job').value];
+  $('p_cand').innerHTML = cands.length ? cands.map(c => `<option value="${esc(c.id)}">#${esc(c.id)} ${esc(c.name)}</option>`).join('') : '<option value="">Add a candidate first</option>';
+  $('p_job').innerHTML = jobs.length ? jobs.map(j => `<option value="${esc(j.id)}">#${esc(j.id)} ${esc(j.title)}</option>`).join('') : '<option value="">Add a job first</option>';
+  if (keep[0]) $('p_cand').value = keep[0]; if (keep[1]) $('p_job').value = keep[1];
+}
+function renderRank() {
+  const r = cands.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+  $('rank_list').innerHTML = !r.length ? empty('No scores yet. Run the pipeline on a candidate.') :
+    r.map((c, i) => `<div class="item" style="align-items:center"><div style="width:30px;font-size:20px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${esc(c.name)}</b><div style="margin-top:4px">${chips(c.skills, 6)}</div><div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
+}
+function renderInterviews() {
+  const s = cands.filter(c => c.status === 'interview_scheduled');
+  $('ov_int').innerHTML = !s.length ? empty('No interviews scheduled yet.') :
+    s.map(c => `<div class="item"><span class="av">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${when(c.interview_date)}</small><small>${esc(c.email)} · <a href="https://meet.google.com/recruitment-${encodeURIComponent(c.name.toLowerCase().replace(/ /g, '-'))}" target="_blank" rel="noopener">Join Meet</a></small></div></div>`).join('');
+}
+async function loadLogs() {
+  const logs = (await load('/api/logs/')).slice(-8).reverse();
+  $('ov_logs').innerHTML = !logs.length ? empty('Agent activity will show here.') :
+    logs.map(l => `<div class="item"><span class="av" style="position:relative;z-index:1">🤖</span><div class="t"><b>${esc(l.from_agent)} → ${esc(l.to_agent)}</b> for ${esc(l.candidate__name)}<small>${esc(String(l.message).slice(0, 140))}</small></div></div>`).join('');
+}
 
-  async function refreshAccess() {
-    const refresh = localStorage.getItem('refresh');
-    if (!refresh) return false;
-    const res = await fetch('/api/auth/refresh/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({refresh})
-    });
-    if (!res.ok) return false;
-    const data = await readJson(res);
-    localStorage.setItem('access', data.access);
-    if (data.refresh) localStorage.setItem('refresh', data.refresh);
-    return true;
-  }
+// ---------- resume upload ----------
+async function readResume(file) {
+  if (!file) return;
+  if (!/\.(pdf|docx|txt)$/i.test(file.name)) { $('upmsg').textContent = '⚠️ Only PDF, DOCX or TXT files are supported.'; return; }
+  $('upmsg').textContent = '⏳ Reading resume…';
+  const fd = new FormData(); fd.append('resume', file);
+  const res = await api('/api/parse-resume/', {method: 'POST', body: fd});
+  const d = await readJson(res);
+  if (!res.ok) { $('upmsg').textContent = '⚠️ ' + errText(d); return; }
+  $('c_resume').value = d.text;
+  const fill = (id, v) => { if (v && !$(id).value.trim()) $(id).value = v; };
+  fill('c_email', d.email); fill('c_phone', d.phone); fill('c_skills', (d.skills || []).join(', '));
+  $('upmsg').textContent = `✅ Read "${file.name}". Sections: ${d.sections.join(', ') || 'none'} · ${d.chunk_count} chunks. Please check the auto-filled fields.`;
+}
+$('file').onchange = e => readResume(e.target.files[0]);
+['dragenter', 'dragover'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => readResume(e.dataTransfer.files[0]));
 
-  // fetch wrapper: adds the token, refreshes it once on 401, else asks the user to log in
-  async function api(url, opts = {}, retry = true) {
-    opts.headers = Object.assign({}, opts.headers || {});
-    const token = localStorage.getItem('access');
-    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-    const res = await fetch(url, opts);
-    if (res.status === 401) {
-      if (retry && await refreshAccess()) return api(url, opts, false);
-      showLogin('Please log in to continue.');
-    }
-    return res;
-  }
+// ---------- actions ----------
+const addJob = btn => busy(btn, async () => {
+  const res = await jsonPost('/api/add-job/', {title: $('job_title').value, required_skills: $('job_skills').value, min_experience: $('job_exp').value, description: $('job_desc').value});
+  const d = await readJson(res);
+  if (!res.ok) return toast(errText(d), 'err');
+  ['job_title', 'job_skills', 'job_desc'].forEach(i => $(i).value = ''); $('job_exp').value = 0;
+  await refresh(); $('p_job').value = d.id; toast('Job added ✅');
+});
+const addCandidate = btn => busy(btn, async () => {
+  const res = await jsonPost('/api/add-candidate/', {name: $('c_name').value, email: $('c_email').value, phone: $('c_phone').value, skills: $('c_skills').value, experience: $('c_exp').value, resume_text: $('c_resume').value});
+  const d = await readJson(res);
+  if (!res.ok) return toast(errText(d), 'err');
+  ['c_name', 'c_email', 'c_phone', 'c_skills', 'c_resume'].forEach(i => $(i).value = ''); $('c_exp').value = 0; $('upmsg').textContent = ''; $('file').value = '';
+  await refresh(); $('p_cand').value = d.id; toast(`Candidate added ✅ (${d.chunks} resume chunks)`);
+});
+const runPipeline = btn => busy(btn, async () => {
+  if (!$('p_cand').value || !$('p_job').value) return toast('Pick a candidate and a job first.', 'err');
+  const st = $('steps'); st.className = 'steps run'; $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
+  const res = await jsonPost('/api/run-pipeline/', {candidate_id: $('p_cand').value, job_id: $('p_job').value});
+  const d = await readJson(res);
+  if (!res.ok) { st.className = 'steps'; return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
+  st.className = 'steps done';
+  $('p_result').innerHTML = `<div class="res"><div class="item" style="padding-top:0;align-items:center">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
+    <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
+    ${d.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}
+    <p style="margin:12px 0 0"><b>Interview:</b> ${d.interview_slot ? esc(d.interview_slot.slot + ' via ' + d.interview_slot.platform) : 'Not scheduled (rejected)'}</p></div>`;
+  await refresh(); loadLogs(); toast('Pipeline complete ✅');
+});
 
-  function jsonPost(url, body) {
-    return api(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    });
-  }
+// ---------- fit big screens ----------
+function fit() { const z = Math.min(3.5, Math.max(1, innerWidth / 1250)); document.documentElement.style.zoom = z > 1.05 ? z.toFixed(2) : ''; }
+addEventListener('resize', fit); fit();
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && document.getElementById('login_overlay').style.display === 'flex') login();
-  });
-
-  window.onload = function () {
-    if (localStorage.getItem('access')) {
-      document.getElementById('who').innerText = '👤 ' + (localStorage.getItem('username') || '');
-      loadStats();
-    } else {
-      showLogin();
-    }
-  };
-
-  // ---------- stats ----------
-  async function loadStats() {
-    try {
-      const res = await api('/api/candidates/');
-      if (!res.ok) return;
-      const data = await res.json();
-      document.getElementById('total_candidates').innerText = data.length;
-      document.getElementById('total_shortlisted').innerText = data.filter(c => ['shortlisted', 'matched', 'ranked'].includes(c.status)).length;
-      document.getElementById('total_interviews').innerText = data.filter(c => c.status === 'interview_scheduled').length;
-      document.getElementById('total_rejected').innerText = data.filter(c => c.status === 'rejected').length;
-    } catch (e) {}
-  }
-
-  // ---------- resume upload ----------
-  function readResume(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const status = document.getElementById('pdf_status');
-    const name = file.name.toLowerCase();
-
-    if (!['.pdf', '.docx', '.txt'].some(ext => name.endsWith(ext))) {
-      status.style.display = 'block';
-      status.style.color = '#c62828';
-      status.innerText = '⚠️ Only PDF, DOCX or TXT files are supported.';
-      return;
-    }
-
-    status.style.display = 'block';
-    status.style.color = '#555';
-    status.innerText = '⏳ Reading resume...';
-
-    const formData = new FormData();
-    formData.append('resume', file);
-    api('/api/parse-resume/', {method: 'POST', body: formData})
-      .then(async r => ({ok: r.ok, data: await readJson(r)}))
-      .then(({ok, data}) => {
-        if (!ok) {
-          status.style.color = '#c62828';
-          status.innerText = '⚠️ ' + errText(data);
-          return;
-        }
-        document.getElementById('c_resume').value = data.text;
-        // auto-fill only the empty fields so nothing the user typed is overwritten
-        const fill = (id, value) => {
-          const el = document.getElementById(id);
-          if (value && !el.value.trim()) el.value = value;
-        };
-        fill('c_email', data.email);
-        fill('c_phone', data.phone);
-        fill('c_skills', (data.skills || []).join(', '));
-        status.style.color = '#4CAF50';
-        status.innerText = '✅ Resume read! Sections found: ' +
-          (data.sections.length ? data.sections.join(', ') : 'none (plain text)') +
-          ' | ' + data.chunk_count + ' chunks. Please check the auto-filled fields.';
-      })
-      .catch(() => {
-        status.style.color = '#c62828';
-        status.innerText = '⚠️ Upload failed, please type resume manually.';
-      });
-  }
-
-  // ---------- create ----------
-  async function addJob() {
-    const res = await jsonPost('/api/add-job/', {
-      title: document.getElementById('job_title').value,
-      required_skills: document.getElementById('job_skills').value,
-      min_experience: document.getElementById('job_exp').value,
-      description: document.getElementById('job_desc').value
-    });
-    const data = await readJson(res);
-    if (!res.ok) { showResult('job_result', errText(data), true); return; }
-    document.getElementById('p_job_id').value = data.id;
-    showResult('job_result', `✅ Job Added! ID: <b>${esc(data.id)}</b> — Use this ID in Step 3`);
-    loadStats();
-  }
-
-  async function addCandidate() {
-    const res = await jsonPost('/api/add-candidate/', {
-      name: document.getElementById('c_name').value,
-      email: document.getElementById('c_email').value,
-      phone: document.getElementById('c_phone').value,
-      skills: document.getElementById('c_skills').value,
-      experience: document.getElementById('c_exp').value,
-      resume_text: document.getElementById('c_resume').value
-    });
-    const data = await readJson(res);
-    if (!res.ok) { showResult('candidate_result', errText(data), true); return; }
-    document.getElementById('p_candidate_id').value = data.id;
-    showResult('candidate_result', `✅ Candidate Added! ID: <b>${esc(data.id)}</b> — Use this ID in Step 3`);
-    loadStats();
-  }
-
-  // ---------- pipeline ----------
-  async function runPipeline() {
-    const candidateId = document.getElementById('p_candidate_id').value;
-    const jobId = document.getElementById('p_job_id').value;
-    if (!candidateId || !jobId) {
-      showResult('pipeline_result', 'Enter both Candidate ID and Job ID.', true);
-      return;
-    }
-    showResult('pipeline_result', '⏳ Running agents, please wait...');
-    const res = await jsonPost('/api/run-pipeline/', {candidate_id: candidateId, job_id: jobId});
-    const data = await readJson(res);
-    if (!res.ok) {
-      showResult('pipeline_result',
-        res.status === 429 ? 'Too many pipeline runs. Wait a minute and try again.' :
-        res.status === 404 ? 'Candidate or Job ID not found.' : errText(data), true);
-      return;
-    }
-    showResult('pipeline_result', `
-      <b>✅ Pipeline Complete!</b><br><br>
-      <b>Name:</b> ${esc(data.name)}<br>
-      <b>Status:</b> ${esc(data.status)}<br>
-      <b>Score:</b> ${esc(data.score)}<br>
-      <b>AI reason:</b> ${esc(data.reason)}<br>
-      ${data.fallback_used ? '<span class="error-text">⚠️ AI was unavailable: this result used the rule-based fallback.</span><br>' : ''}
-      <b>Interview:</b> ${data.interview_slot ? esc(data.interview_slot.slot + ' via ' + data.interview_slot.platform) : 'Not scheduled (rejected)'}
-    `);
-    loadStats();
-  }
-
-  // ---------- dashboards ----------
-  async function loadList(url, targetId) {
-    const res = await api(url);
-    if (!res.ok) {
-      document.getElementById(targetId).innerHTML = `<p class="error-text">❌ ${esc(errText(await readJson(res)))}</p>`;
-      return null;
-    }
-    return res.json();
-  }
-
-  async function loadCandidates() {
-    const data = await loadList('/api/candidates/', 'dashboard_content');
-    if (!data) return;
-    let html = '<br><table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th><th>Interview</th></tr>';
-    data.forEach(c => {
-      html += `<tr>
-        <td>${esc(c.id)}</td>
-        <td>${esc(c.name)}</td>
-        <td>${esc(c.email)}</td>
-        <td>${esc(c.phone)}</td>
-        <td>${esc(c.skills)}</td>
-        <td>${esc(c.experience)}y</td>
-        <td>${esc(c.score)}</td>
-        <td><span class="badge ${esc(c.status)}">${esc(c.status)}</span></td>
-        <td>${c.interview_date ? esc(c.interview_date.substring(0, 16)) : '-'}</td>
-      </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('dashboard_content').innerHTML = html;
-  }
-
-  async function loadJobs() {
-    const data = await loadList('/api/jobs/', 'dashboard_content');
-    if (!data) return;
-    let html = '<br><table><tr><th>ID</th><th>Title</th><th>Required Skills</th><th>Min Exp</th><th>Description</th></tr>';
-    data.forEach(j => {
-      html += `<tr>
-        <td>${esc(j.id)}</td>
-        <td>${esc(j.title)}</td>
-        <td>${esc(j.required_skills)}</td>
-        <td>${esc(j.min_experience)}y</td>
-        <td>${esc(j.description)}</td>
-      </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('dashboard_content').innerHTML = html;
-  }
-
-  async function loadLogs() {
-    const data = await loadList('/api/logs/', 'dashboard_content');
-    if (!data) return;
-    let html = '<br><table><tr><th>Candidate</th><th>From Agent</th><th>To Agent</th><th>Message</th></tr>';
-    data.forEach(l => {
-      html += `<tr>
-        <td>${esc(l.candidate__name)}</td>
-        <td>${esc(l.from_agent)}</td>
-        <td>${esc(l.to_agent)}</td>
-        <td>${esc(l.message)}</td>
-      </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('dashboard_content').innerHTML = html;
-  }
-
-  async function loadInterviews() {
-    const data = await loadList('/api/candidates/', 'interview_dashboard');
-    if (!data) return;
-    const scheduled = data.filter(c => c.status === 'interview_scheduled');
-    if (scheduled.length === 0) {
-      document.getElementById('interview_dashboard').innerHTML = '<p>No interviews scheduled yet. Run the pipeline first.</p>';
-      return;
-    }
-    let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Interview Date</th><th>Meet Link</th></tr>';
-    scheduled.forEach(c => {
-      const slug = encodeURIComponent(c.name.toLowerCase().replace(/ /g, '-'));
-      html += `<tr>
-        <td>${esc(c.id)}</td>
-        <td>${esc(c.name)}</td>
-        <td>${esc(c.email)}</td>
-        <td>${esc(c.phone)}</td>
-        <td><span class="badge interview_scheduled">${esc(c.status)}</span></td>
-        <td>${c.interview_date ? esc(c.interview_date.substring(0, 16)) : '-'}</td>
-        <td><a href="https://meet.google.com/recruitment-${slug}" target="_blank" rel="noopener">Join Meet</a></td>
-      </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('interview_dashboard').innerHTML = html;
-  }
-
-  async function loadRanking() {
-    const data = await loadList('/api/candidates/', 'ranking_dashboard');
-    if (!data) return;
-    const ranked = data.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
-    if (ranked.length === 0) {
-      document.getElementById('ranking_dashboard').innerHTML = '<p>No candidates ranked yet. Run the pipeline first.</p>';
-      return;
-    }
-    let html = '<table><tr><th>Rank</th><th>Name</th><th>Skills</th><th>Experience</th><th>Score</th><th>Status</th></tr>';
-    ranked.forEach((c, i) => {
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
-      html += `<tr>
-        <td>${medal}</td>
-        <td>${esc(c.name)}</td>
-        <td>${esc(c.skills)}</td>
-        <td>${esc(c.experience)}y</td>
-        <td><b>${esc(c.score)}</b></td>
-        <td><span class="badge ${esc(c.status)}">${esc(c.status)}</span></td>
-      </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('ranking_dashboard').innerHTML = html;
-  }
+// ---------- start ----------
+function start() { const u = localStorage.getItem('username') || ''; $('who').textContent = u; $('av').textContent = ini(u); refresh(); loadLogs(); }
+window.onload = () => { show(location.hash.slice(1) || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };
 </script>
-
 </body>
 </html>
