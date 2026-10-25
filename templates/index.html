@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef2f1;--surf:#fff;--surf2:#f6f8f7;--text:#13232b;--muted:#5f7078;--line:#dde4e2;--brand:#0f766e;--brand2:#0b5c56;--on:#fff;--soft:#d9f0ec;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--blue:#1d4ed8;--vio:#7e22ce;--r:16px;--sh:0 1px 2px rgba(19,35,43,.06),0 8px 24px -12px rgba(19,35,43,.18);--side:232px}
-@media(prefers-color-scheme:dark){:root{--bg:#0c1417;--surf:#142026;--surf2:#1a2a31;--text:#e6f0ee;--muted:#8fa4a9;--line:#263840;--brand:#2dd4bf;--brand2:#5eead4;--on:#042f2a;--soft:#12403c;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--blue:#60a5fa;--vio:#c084fc;--sh:0 8px 24px -12px rgba(0,0,0,.6)}}
+:root[data-theme=dark]{--bg:#0c1417;--surf:#142026;--surf2:#1a2a31;--text:#e6f0ee;--muted:#8fa4a9;--line:#263840;--brand:#2dd4bf;--brand2:#5eead4;--on:#042f2a;--soft:#12403c;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--blue:#60a5fa;--vio:#c084fc;--sh:0 8px 24px -12px rgba(0,0,0,.6)}
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(800px 400px at 85% -5%,color-mix(in srgb,var(--brand) 16%,transparent),transparent),radial-gradient(600px 400px at 0 100%,color-mix(in srgb,var(--vio) 9%,transparent),transparent)}
 .hero{border-radius:20px;padding:26px 28px;margin-bottom:16px;color:var(--on);background:linear-gradient(115deg,var(--brand2),var(--brand));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 18px 40px -20px var(--brand)}
 .hero h2{margin:0;font-size:clamp(20px,2.4vw,26px);letter-spacing:-.02em}.hero p{margin:6px 0 0;opacity:.85;max-width:52ch}
@@ -21,6 +21,10 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-grad
 tbody tr:hover td{background:var(--surf2)}
 .btn{background:linear-gradient(135deg,var(--brand),var(--brand2))}
 .logo i{box-shadow:0 6px 16px -4px var(--brand)}
+:root{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+.pod3{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.pod3:empty{display:none}.pod{text-align:center}.pod:first-child{border-color:#f5b301;box-shadow:0 14px 34px -18px #f5b301}
+.ring.big{width:96px;height:96px}.ring.big b{width:76px;height:76px;font-size:22px}#sres{margin-top:8px}
+@media(max-width:700px){.pod3{grid-template-columns:1fr}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;font:14px/1.55 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -87,7 +91,7 @@ tr:last-child td{border-bottom:0}
 .ranked{background:color-mix(in srgb,var(--vio) 16%,transparent);color:var(--vio)}
 .interview_scheduled{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
 .rejected{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
-.ring{--p:0;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--brand) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
+.ring{--p:0;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--rc,var(--brand)) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
 .ring b{width:36px;height:36px;border-radius:50%;background:var(--surf);display:grid;place-items:center;font-size:12px}
 .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:99px}
 .chips{display:flex;flex-wrap:wrap;gap:4px}.chip{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:1px 8px;font-size:12px}
@@ -99,8 +103,7 @@ tr:last-child td{border-bottom:0}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
 .step{background:var(--surf2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;font-size:12px;font-weight:600;color:var(--muted)}
 .step span{display:block;font-size:20px;margin-bottom:2px}
-.run .step{animation:pulse 1s infinite alternate}.run .step:nth-child(2){animation-delay:.2s}.run .step:nth-child(3){animation-delay:.4s}.run .step:nth-child(4){animation-delay:.6s}
-.done .step{background:var(--soft);border-color:var(--brand);color:var(--brand2)}
+.step.on{animation:pulse 1s infinite alternate;border-color:var(--brand);color:var(--brand2)}.step.done{background:var(--soft);border-color:var(--brand);color:var(--brand2)}.step.skip{opacity:.4}
 @keyframes pulse{to{border-color:var(--brand);color:var(--brand2);background:var(--soft)}}
 .res{margin-top:20px;padding:16px;border-radius:14px;background:var(--surf2);border:1px solid var(--line)}
 .warnbox{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
@@ -151,17 +154,17 @@ tr:last-child td{border-bottom:0}
 <aside class="side">
   <div class="logo"><i>🤖</i><div>Recruit AI<small>Hiring assistant</small></div></div>
   <nav class="nav" id="tabs">
-    <button class="tab" data-t="overview"><span class="i">📊</span>Overview</button>
+    <button class="tab" data-t="overview"><span class="i">📊</span>Dashboard</button>
     <button class="tab" data-t="jobs"><span class="i">📋</span>Jobs</button>
     <button class="tab" data-t="candidates"><span class="i">👤</span>Candidates</button>
     <button class="tab" data-t="pipeline"><span class="i">⚙️</span>Pipeline</button>
-    <button class="tab" data-t="rankings"><span class="i">🏆</span>Rankings</button>
+    <button class="tab" data-t="rankings"><span class="i">🏆</span>Leaderboard</button>
   </nav>
-  <div class="me"><span class="av" id="av">?</span><div><b id="who"></b><small>Recruiter</small></div><button class="ghost" onclick="logout()" title="Log out">Log out</button></div>
+  <div class="me"><span class="av" id="av">?</span><div><b id="who"></b><small>Recruiter</small></div><button class="ghost themebtn" onclick="toggleTheme()" title="Toggle theme">🌙</button><button class="ghost" onclick="logout()" title="Log out">⎋</button></div>
 </aside>
 
 <div class="wrap">
-  <div class="top"><div><h1 id="title">Overview</h1><p id="sub"></p></div><button class="ghost" id="mlogout" onclick="logout()" style="display:none">Log out</button></div>
+  <div class="top"><div><h1 id="title">Overview</h1><p id="sub"></p></div><div id="mact" style="display:none;gap:8px"><button class="ghost themebtn" onclick="toggleTheme()" title="Toggle theme">🌙</button><button class="ghost" onclick="logout()">Log out</button></div></div>
 
   <section class="view" id="v-overview">
     <div class="hero"><div><h2 id="hello"></h2><p id="hsub"></p></div>
@@ -190,6 +193,9 @@ tr:last-child td{border-bottom:0}
   </section>
 
   <section class="view" id="v-candidates">
+    <div class="card" style="margin-bottom:16px"><h2>🔎 Semantic search (AI)</h2>
+      <div class="filters" style="margin-bottom:0"><input id="sq" placeholder="e.g. who has built REST APIs with Django?" onkeydown="if(event.key==='Enter')semSearch($('sbtn'))"><button class="btn" id="sbtn" style="margin:0;flex:none" onclick="semSearch(this)">Search</button></div>
+      <div id="sres"></div></div>
     <div class="grid two">
       <div class="card"><h2>Add a candidate</h2>
         <label class="drop" id="drop"><input type="file" id="file" accept=".pdf,.docx,.txt" hidden>
@@ -225,7 +231,8 @@ tr:last-child td{border-bottom:0}
   </section>
 
   <section class="view" id="v-rankings">
-    <div class="card"><h2>Candidate leaderboard</h2><div id="rank_list"></div></div>
+    <div class="grid pod3" id="podium"></div>
+    <div class="card"><h2>Full ranking</h2><div id="rank_list"></div></div>
   </section>
 </div>
 <div id="toasts"></div>
@@ -240,9 +247,9 @@ const when = d => d ? esc(String(d).slice(0, 16).replace('T', ' ')) : '-';
 const empty = t => `<div class="empty">${t}</div>`;
 const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase());
 const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
-const ring = s => `<div class="ring" style="--p:${Math.min(100, +s || 0)}"><b>${esc(Math.round(s || 0))}</b></div>`;
+const ring = (s, big) => { const v = Math.max(0, Math.min(100, Number(s) || 0)); return `<div class="ring${big ? ' big' : ''}" style="--p:${v};--rc:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)'}"><b>${Math.round(v)}</b></div>`; };
 
-const TITLES = {overview: ['Overview', 'Hiring activity at a glance'], jobs: ['Jobs', 'Open roles and what they need'], candidates: ['Candidates', 'Upload resumes and track status'], pipeline: ['Pipeline', 'Screen, match, rank and schedule in one run'], rankings: ['Rankings', 'Best scores first']};
+const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Run pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score']};
 
 function toast(msg, type = 'ok') {
   const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg;
@@ -252,6 +259,11 @@ async function busy(btn, fn) {
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…';
   try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; }
 }
+
+// ---------- theme ----------
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('theme', t); } catch (e) {} document.querySelectorAll('.themebtn').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); }
+const toggleTheme = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+setTheme(localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
 // ---------- auth (JWT) ----------
 const showLogin = m => { $('login_overlay').style.display = 'flex'; $('login_error').textContent = m || ''; };
@@ -290,7 +302,7 @@ function show(name) {
 }
 $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); });
 const mq = matchMedia('(max-width:900px)');
-const syncLogout = () => $('mlogout').style.display = mq.matches ? '' : 'none';
+const syncLogout = () => $('mact').style.display = mq.matches ? 'flex' : 'none';
 mq.addEventListener('change', syncLogout); syncLogout();
 
 // ---------- data ----------
@@ -330,7 +342,7 @@ function renderCands() {
   const rows = cands.filter(c => (!sf || c.status === sf) && (!q || (c.name + ' ' + c.skills).toLowerCase().includes(q)));
   $('cands_list').innerHTML = !rows.length ? empty(cands.length ? 'No candidate matches this filter.' : 'No candidates yet. Upload a resume to start.') :
     '<table><tr><th>Candidate</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th></tr>' +
-    rows.map(c => `<tr><td class="nm"><div class="who"><span class="av">${ini(c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.email)}</small></div></div></td><td data-l="Skills">${chips(c.skills)}</td><td data-l="Experience">${esc(c.experience)} yrs</td><td data-l="Score">${esc(c.score)}</td><td data-l="Status">${badge(c.status)}</td></tr>`).join('') + '</table>';
+    rows.map(c => `<tr><td class="nm"><div class="who"><span class="av">${ini(c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.email)}</small></div></div></td><td data-l="Skills">${chips(c.skills)}</td><td data-l="Experience">${esc(c.experience)} yrs</td><td data-l="Score">${c.score > 0 ? ring(c.score) : '-'}</td><td data-l="Status">${badge(c.status)}</td></tr>`).join('') + '</table>';
 }
 function renderSelects() {
   const keep = [$('p_cand').value, $('p_job').value];
@@ -340,6 +352,7 @@ function renderSelects() {
 }
 function renderRank() {
   const r = cands.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+  $('podium').innerHTML = r.slice(0, 3).map((c, i) => `<div class="card pod"><div style="font-size:32px">${['🥇', '🥈', '🥉'][i]}</div><h3 style="margin:6px 0 2px">${esc(c.name)}</h3><small style="color:var(--muted)">${esc(c.experience)} yrs experience</small><div style="display:grid;place-items:center;margin-top:12px">${ring(c.score, 1)}</div></div>`).join('');
   $('rank_list').innerHTML = !r.length ? empty('No scores yet. Run the pipeline on a candidate.') :
     r.map((c, i) => `<div class="item" style="align-items:center"><div style="width:30px;font-size:20px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${esc(c.name)}</b><div style="margin-top:4px">${chips(c.skills, 6)}</div><div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
 }
@@ -374,6 +387,12 @@ $('file').onchange = e => readResume(e.target.files[0]);
 $('drop').addEventListener('drop', e => readResume(e.dataTransfer.files[0]));
 
 // ---------- actions ----------
+const semSearch = btn => busy(btn, async () => {
+  const q = $('sq').value.trim(); if (q.length < 2) return toast('Type at least 2 characters.', 'err');
+  const res = await api('/api/search/?q=' + encodeURIComponent(q) + '&limit=5'); const d = await readJson(res);
+  if (!res.ok) return toast(errText(d), 'err');
+  $('sres').innerHTML = !d.length ? empty('No indexed resumes matched yet.') : d.map(r => `<div class="item"><span class="av">${ini(r.name)}</span><div class="t"><b>${esc(r.name)}</b> · ${Math.round(r.similarity * 100)}% match<small>${esc(r.skills)}</small>${(r.evidence || []).map(e => `<small>“${esc(String(e.text).slice(0, 160))}” <span class="chip">${esc(e.section)}</span></small>`).join('')}</div></div>`).join('');
+});
 const addJob = btn => busy(btn, async () => {
   const res = await jsonPost('/api/add-job/', {title: $('job_title').value, required_skills: $('job_skills').value, min_experience: $('job_exp').value, description: $('job_desc').value});
   const d = await readJson(res);
@@ -388,13 +407,15 @@ const addCandidate = btn => busy(btn, async () => {
   ['c_name', 'c_email', 'c_phone', 'c_skills', 'c_resume'].forEach(i => $(i).value = ''); $('c_exp').value = 0; $('upmsg').textContent = ''; $('file').value = '';
   await refresh(); $('p_cand').value = d.id; toast(`Candidate added ✅ (${d.chunks} resume chunks)`);
 });
+function setSteps(done, on, skipFrom = 9) { document.querySelectorAll('.step').forEach((s, i) => s.className = 'step' + (i < done ? ' done' : i === on ? ' on' : '') + (i >= skipFrom ? ' skip' : '')); }
 const runPipeline = btn => busy(btn, async () => {
   if (!$('p_cand').value || !$('p_job').value) return toast('Pick a candidate and a job first.', 'err');
-  const st = $('steps'); st.className = 'steps run'; $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
+  let k = 0; setSteps(0, 0); const timer = setInterval(() => { k = Math.min(k + 1, 3); setSteps(k, k); }, 900); $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
   const res = await jsonPost('/api/run-pipeline/', {candidate_id: $('p_cand').value, job_id: $('p_job').value});
+  clearInterval(timer);
   const d = await readJson(res);
-  if (!res.ok) { st.className = 'steps'; return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
-  st.className = 'steps done';
+  if (!res.ok) { setSteps(0, -1); return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
+  const ran = d.interview_slot ? 4 : 2; setSteps(ran, -1, ran);
   $('p_result').innerHTML = `<div class="res"><div class="item" style="padding-top:0;align-items:center">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
     <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
     ${d.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}

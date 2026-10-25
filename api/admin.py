@@ -29,6 +29,11 @@ class AgentLogAdmin(admin.ModelAdmin):
 
 @admin.register(ResumeChunk)
 class ResumeChunkAdmin(admin.ModelAdmin):
-    list_display = ('candidate', 'section', 'chunk_index', 'created_at')
+    list_display = ('candidate', 'section', 'chunk_index', 'embedded', 'created_at')
+    exclude = ('embedding',)    # 768 numbers are not useful to read
     list_filter = ('section',)
     search_fields = ('text', 'candidate__name')
+
+    @admin.display(boolean=True, description='Embedded')
+    def embedded(self, obj):
+        return obj.embedding is not None

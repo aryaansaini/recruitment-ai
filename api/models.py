@@ -1,5 +1,5 @@
 from django.db import models
-
+from pgvector.django import VectorField
 
 class Candidate(models.Model):
     class Status(models.TextChoices):
@@ -85,6 +85,7 @@ class ResumeChunk(models.Model):
     section = models.CharField(max_length=30)       # skills, experience, projects, ...
     chunk_index = models.PositiveIntegerField()     # order inside the resume
     text = models.TextField()
+    embedding = VectorField(dimensions=768, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -93,5 +94,10 @@ class ResumeChunk(models.Model):
             models.UniqueConstraint(fields=['candidate', 'chunk_index'], name='unique_chunk_index_per_candidate'),
         ]
 
+    @property
+    def embed_text(self):
+        """Text sent to the embedding model: the section label gives it context."""
+        return f'{self.section.title()}: {self.text}'
+        
     def __str__(self):
         return f'{self.candidate} [{self.section} #{self.chunk_index}]'
