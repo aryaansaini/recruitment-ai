@@ -27,3 +27,10 @@ class JobCreateSerializer(serializers.ModelSerializer):
 class PipelineRequestSerializer(serializers.Serializer):
     candidate_id = serializers.IntegerField(min_value=1)
     job_id = serializers.IntegerField(min_value=1)
+
+
+
+
+class SearchSerializer(serializers.Serializer):
+    q = serializers.CharField(min_length=2, max_length=300)
+    limit = serializers.IntegerField(min_value=1, max_value=20, default=5)

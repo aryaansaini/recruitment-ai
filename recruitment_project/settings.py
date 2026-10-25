@@ -28,6 +28,8 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 if GEMINI_API_KEY:
     os.environ.setdefault('GOOGLE_API_KEY', GEMINI_API_KEY)
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'gemini-embedding-001')
+EMBEDDING_DIM = 768   # must match ResumeChunk.embedding dimensions (changing it needs a migration)
 
 # ---------- Application definition ----------
 INSTALLED_APPS = [
@@ -121,7 +123,8 @@ REST_FRAMEWORK = {
         'anon': '30/min',
         'user': '120/min',
         'login': '10/min',      
-        'pipeline': '10/min',   
+        'pipeline': '10/min', 
+        'search': '30/min',
     },
 }
 

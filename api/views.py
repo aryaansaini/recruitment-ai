@@ -21,14 +21,16 @@ from .resume_parser import (
     parse_skill_list,
     split_sections,
 )
+from .embeddings import EmbeddingError
+from .search import search_candidates
 from .serializers import (
     CandidateCreateSerializer,
     JobCreateSerializer,
     PipelineRequestSerializer,
+    SearchSerializer,
 )
-from .services import rebuild_resume_chunks
-from .throttles import PipelineThrottle
-
+from .services import embed_candidate_chunks, rebuild_resume_chunks
+from .throttles import PipelineThrottle, SearchThrottle
 logger = logging.getLogger(__name__)
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -59,8 +61,9 @@ def add_candidate(request):
     with transaction.atomic():
         c = serializer.save()
         chunk_count = rebuild_resume_chunks(c)
-    return Response({'id': c.id, 'message': 'Candidate added!', 'chunks': chunk_count},
-                    status=status.HTTP_201_CREATED)
+    embedded = embed_candidate_chunks(c)
+    return Response({'id': c.id, 'message': 'Candidate added!', 'chunks': chunk_count,
+                     'embedded_chunks': embedded}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -142,3 +145,28 @@ def parse_resume(request):
         'skills': parse_skill_list(sections.get('skills', '')),
         'chunk_count': len(chunk_resume(text)),
     })
+
+
+
+# ---------- Semantic search ----------
+@api_view(['GET'])
+@throttle_classes([SearchThrottle])
+def search(request):
+    """GET /api/search/?q=django rest apis&limit=5 -> best matching candidates + matching resume lines."""
+    serializer = SearchSerializer(data=request.query_params)
+    serializer.is_valid(raise_exception=True)
+    try:
+        results = search_candidates(serializer.validated_data['q'], serializer.validated_data['limit'])
+    except EmbeddingError as exc:
+        logger.warning('Search failed: %s', exc)
+        return Response({'detail': 'Search is temporarily unavailable (embedding service error).'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return Response([{
+        'candidate_id': r['candidate'].id,
+        'name': r['candidate'].name,
+        'email': r['candidate'].email,
+        'skills': r['candidate'].skills,
+        'experience': r['candidate'].experience,
+        'similarity': round(r['similarity'], 3),
+        'evidence': r['evidence'],
+    } for r in results])

@@ -19,4 +19,5 @@ urlpatterns = [
     path('api/jobs/', views.get_jobs),
     path('api/logs/', views.get_logs),
     path('api/parse-resume/', views.parse_resume),
+    path('api/search/', views.search),
 ]
