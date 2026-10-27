@@ -53,6 +53,8 @@ class Application(models.Model):
     status = models.CharField(max_length=50, choices=Status.choices, default=Status.PENDING)
     reason = models.TextField(blank=True)           # why the AI gave this score
     fallback_used = models.BooleanField(default=False)  # True if rule-based fallback scored it (AI failed)
+    breakdown = models.JSONField(null=True, blank=True)  # {"skills": 80, "experience": 100, "education": 50}
+    evidence = models.JSONField(default=list, blank=True)  # verified resume quotes behind the score
     interview_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

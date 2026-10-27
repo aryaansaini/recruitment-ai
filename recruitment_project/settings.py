@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 import dj_database_url
 from pathlib import Path
@@ -26,6 +27,7 @@ CORS_ALLOWED_ORIGINS = [
 # ---------- Gemini / ADK ----------
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+# Google ADK / google-genai read the key from GOOGLE_API_KEY
 if GEMINI_API_KEY:
     os.environ.setdefault('GOOGLE_API_KEY', GEMINI_API_KEY)
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'gemini-embedding-001')
@@ -76,13 +78,19 @@ WSGI_APPLICATION = 'recruitment_project.wsgi.application'
 
 
 # ---------- Database ----------
-
+# Normal use  : DATABASE_URL set   -> Postgres (Neon, with pgvector); empty -> local SQLite.
+# `manage.py test` ALWAYS uses SQLite (so tests never touch Neon), unless TEST_DATABASE_URL is set.
+RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == 'test'
+DATABASE_URL = os.getenv('TEST_DATABASE_URL', '') if RUNNING_TESTS else os.getenv('DATABASE_URL', '')
 DATABASES = {
     'default': dj_database_url.parse(
-        os.getenv('DATABASE_URL') or f'sqlite:///{BASE_DIR / "db.sqlite3"}',  # empty value -> SQLite
+        DATABASE_URL or f'sqlite:///{BASE_DIR / "db.sqlite3"}',  # empty value -> SQLite
         conn_max_age=600,
     )
 }
+# Neon's pooled endpoint (pgbouncer) does not support server-side cursors
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+
 
 # ---------- Password validation ----------
 AUTH_PASSWORD_VALIDATORS = [
@@ -111,7 +119,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    
+    # Every API endpoint requires a valid login token unless a view says otherwise
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
@@ -122,9 +130,9 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '30/min',
         'user': '120/min',
-        'login': '10/min',      
-        'pipeline': '10/min', 
-        'search': '30/min',
+        'login': '10/min',      # brute-force protection
+        'pipeline': '10/min',   # each run calls Gemini
+        'search': '30/min',     # each search calls the embedding API
     },
 }
 
