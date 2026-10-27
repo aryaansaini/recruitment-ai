@@ -90,6 +90,9 @@ def run_pipeline(request):
         'score': candidate.score,
         'reason': getattr(candidate, 'ai_reason', ''),
         'fallback_used': getattr(candidate, 'fallback_used', False),
+        'breakdown': getattr(candidate, 'ai_breakdown', None),
+        'evidence': getattr(candidate, 'ai_evidence', []),
+        'retrieval': getattr(candidate, 'ai_retrieval', ''),
         'interview_slot': slot,
     })
 

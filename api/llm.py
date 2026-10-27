@@ -10,7 +10,7 @@ import logging
 from django.conf import settings
 from google import genai
 from google.genai import types
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +23,41 @@ def _clamp_0_100(value: int) -> int:
     return max(0, min(100, int(value)))
 
 
+def _require_all(schema):
+    """Schema sent to Gemini: every field is required (null/empty allowed), no 'default' keys.
+    Python-side defaults stay, so older code that builds these objects keeps working."""
+    schema['required'] = list(schema.get('properties', {}))
+    for prop in schema.get('properties', {}).values():
+        prop.pop('default', None)
+
+
+class EvidenceItem(BaseModel):
+    model_config = ConfigDict(json_schema_extra=_require_all)
+
+    chunk_id: int = Field(description='The number after "chunk" in the evidence header, copied exactly')
+    quote: str = Field(description='Short EXACT quote (max 200 characters) copied from that chunk')
+    supports: str = Field(description='Which job requirement this quote supports, e.g. "Django experience"')
+
+
 class ScreeningResult(BaseModel):
+    model_config = ConfigDict(json_schema_extra=_require_all)
+
     score: int = Field(description='Overall fit score from 0 to 100')
     reason: str = Field(description='One or two sentences explaining the score, citing resume evidence')
+    skills_score: int | None = Field(
+        default=None, description='0-100: how well the evidenced skills cover the job required skills')
+    education_score: int | None = Field(
+        default=None, description='0-100: relevance of the education; 50 if the evidence shows none')
+    strengths: list[str] = Field(default_factory=list, description='Up to 3 short strengths')
+    gaps: list[str] = Field(default_factory=list, description='Up to 3 short gaps or missing requirements')
+    evidence: list[EvidenceItem] = Field(default_factory=list, description='Up to 4 supporting quotes')
 
     _clamp = field_validator('score')(_clamp_0_100)
+
+    @field_validator('skills_score', 'education_score')
+    @classmethod
+    def _clamp_optional(cls, value):
+        return None if value is None else _clamp_0_100(value)
 
 
 class MatchResult(BaseModel):

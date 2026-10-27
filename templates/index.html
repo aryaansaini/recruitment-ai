@@ -418,6 +418,9 @@ const runPipeline = btn => busy(btn, async () => {
   const ran = d.interview_slot ? 4 : 2; setSteps(ran, -1, ran);
   $('p_result').innerHTML = `<div class="res"><div class="item" style="padding-top:0;align-items:center">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
     <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
+    ${d.breakdown ? `<div style="margin-top:12px">${[['Skills', d.breakdown.skills], ['Experience', d.breakdown.experience], ['Education', d.breakdown.education]].map(([l, v]) => `<div class="fun" style="grid-template-columns:90px 1fr 34px"><span>${l}</span><div class="bar"><i style="width:${Math.min(100, v)}%"></i></div><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
+    ${(d.evidence || []).length ? `<div style="margin-top:12px"><b>Evidence from the resume</b>${d.evidence.map(e => `<small style="display:block;color:var(--muted);margin-top:6px">“${esc(e.quote)}” <span class="chip">${esc(e.section)}</span> ${esc(e.supports)}</small>`).join('')}</div>` : ''}
+    ${d.retrieval && d.retrieval !== 'semantic' ? `<small style="display:block;color:var(--muted);margin-top:10px">Scored without semantic search (${esc(d.retrieval)}).</small>` : ''}
     ${d.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}
     <p style="margin:12px 0 0"><b>Interview:</b> ${d.interview_slot ? esc(d.interview_slot.slot + ' via ' + d.interview_slot.platform) : 'Not scheduled (rejected)'}</p></div>`;
   await refresh(); loadLogs(); toast('Pipeline complete ✅');
