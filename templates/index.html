@@ -3,212 +3,340 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI Recruitment Assistant</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Recruit AI</title>
 <style>
-:root{--bg:#eef2f1;--surf:#fff;--surf2:#f6f8f7;--text:#13232b;--muted:#5f7078;--line:#dde4e2;--brand:#0f766e;--brand2:#0b5c56;--on:#fff;--soft:#d9f0ec;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--blue:#1d4ed8;--vio:#7e22ce;--r:16px;--sh:0 1px 2px rgba(19,35,43,.06),0 8px 24px -12px rgba(19,35,43,.18);--side:232px}
-:root[data-theme=dark]{--bg:#0c1417;--surf:#142026;--surf2:#1a2a31;--text:#e6f0ee;--muted:#8fa4a9;--line:#263840;--brand:#2dd4bf;--brand2:#5eead4;--on:#042f2a;--soft:#12403c;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--blue:#60a5fa;--vio:#c084fc;--sh:0 8px 24px -12px rgba(0,0,0,.6)}
-body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(800px 400px at 85% -5%,color-mix(in srgb,var(--brand) 16%,transparent),transparent),radial-gradient(600px 400px at 0 100%,color-mix(in srgb,var(--vio) 9%,transparent),transparent)}
-.hero{border-radius:20px;padding:26px 28px;margin-bottom:16px;color:var(--on);background:linear-gradient(115deg,var(--brand2),var(--brand));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 18px 40px -20px var(--brand)}
-.hero h2{margin:0;font-size:clamp(20px,2.4vw,26px);letter-spacing:-.02em}.hero p{margin:6px 0 0;opacity:.85;max-width:52ch}
-.hero .acts{display:flex;gap:10px;flex-wrap:wrap}
-.hero button{border:0;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer;background:var(--on);color:var(--brand2);min-height:44px}
-.hero button.o{background:rgba(255,255,255,.18);color:inherit;border:1px solid rgba(255,255,255,.4)}
-.fun{display:grid;grid-template-columns:130px 1fr 28px;gap:10px;align-items:center;margin:10px 0}.fun .bar{height:10px}.fun b{text-align:right}
-.tl .item{position:relative;border:0;padding:10px 0}.tl .item:not(:last-child)::after{content:"";position:absolute;left:16px;top:46px;bottom:-10px;width:2px;background:var(--line)}
-.stat .ic{background:color-mix(in srgb,var(--c,var(--brand)) 18%,transparent)}
-tbody tr:hover td{background:var(--surf2)}
-.btn{background:linear-gradient(135deg,var(--brand),var(--brand2))}
-.logo i{box-shadow:0 6px 16px -4px var(--brand)}
-:root{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
-.pod3{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.pod3:empty{display:none}.pod{text-align:center}.pod:first-child{border-color:#f5b301;box-shadow:0 14px 34px -18px #f5b301}
-.ring.big{width:96px;height:96px}.ring.big b{width:76px;height:76px;font-size:22px}#sres{margin-top:8px}
-@media(max-width:700px){.pod3{grid-template-columns:1fr}}
+:root{--bg:#fff;--canvas:#f6f8fa;--inset:#f6f8fa;--text:#1f2328;--muted:#656d76;--line:#d0d7de;--line2:#d8dee4;--accent:#0969da;--ok:#1a7f37;--okbtn:#1f883d;--okbtn2:#1a7f37;--warn:#9a6700;--bad:#cf222e;--vio:#8250df;--hdr:#24292f;--hdrt:#fff;--sel:#fd8c73;--sh:0 1px 0 rgba(31,35,40,.04);--r:6px;color-scheme:light}
+:root[data-theme=dark]{--bg:#0d1117;--canvas:#161b22;--inset:#010409;--text:#e6edf3;--muted:#7d8590;--line:#30363d;--line2:#21262d;--accent:#2f81f7;--ok:#3fb950;--okbtn:#238636;--okbtn2:#2ea043;--warn:#d29922;--bad:#f85149;--vio:#a371f7;--hdr:#161b22;--sh:none;color-scheme:dark}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;font:14px/1.55 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;min-height:100vh}
 button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-/* shell */
-.side{position:fixed;inset:0 auto 0 0;width:var(--side);background:var(--surf);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 12px;z-index:20}
-.logo{display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-weight:800;font-size:15px;line-height:1.2}
-.logo i{width:36px;height:36px;border-radius:11px;background:var(--brand);color:var(--on);display:grid;place-items:center;font-style:normal;font-size:18px;flex:none}
-.logo small{display:block;font-weight:500;color:var(--muted);font-size:11px}
-.nav{display:flex;flex-direction:column;gap:4px}
-.tab{display:flex;align-items:center;gap:12px;background:none;border:0;border-radius:12px;padding:11px 12px;cursor:pointer;color:var(--muted);font-weight:600;text-align:left;width:100%}
-.tab span.i{font-size:18px;width:22px;text-align:center}
-.tab:hover{background:var(--surf2);color:var(--text)}
-.tab.active{background:var(--soft);color:var(--brand2)}
-.side .me{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.me b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.me small{color:var(--muted)}
-.me div{min-width:0;flex:1}
-.wrap{margin-left:var(--side);padding:28px clamp(16px,3vw,48px) 48px}
-.wrap>*{max-width:1500px;margin-left:auto;margin-right:auto}
-
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:22px}
-.top h1{margin:0;font-size:clamp(22px,3vw,30px);letter-spacing:-.02em;line-height:1.15}
-.top p{margin:4px 0 0;color:var(--muted)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* header */
+.hdr{background:var(--hdr);color:var(--hdrt);padding:12px 16px calc(12px);display:flex;align-items:center;gap:14px;padding-top:calc(12px + env(safe-area-inset-top))}
+.hdr .logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.hdr .logo i{font-style:normal;font-size:22px}
+.hdr .sp{flex:1}
+.hdr .u{display:flex;align-items:center;gap:8px;font-size:13px}
+.hbtn{background:transparent;border:1px solid rgba(240,246,252,.25);color:#fff;border-radius:var(--r);padding:4px 10px;cursor:pointer;font-size:13px;min-height:30px}
+.hbtn:hover{background:rgba(255,255,255,.12)}
+.av{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:inline-grid;place-items:center;font-weight:600;font-size:10px;flex:none}
+/* page head + tabs */
+.pagehead{background:var(--canvas);border-bottom:1px solid var(--line);padding:20px 16px 0}
+.pagehead .in{max-width:1280px;margin:0 auto}
+.pagehead h1{margin:0;font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px}
+.pagehead h1 small{font-size:12px;font-weight:500;border:1px solid var(--line);border-radius:2em;padding:0 8px;color:var(--muted)}
+.pagehead p{margin:4px 0 14px;color:var(--muted)}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:8px 14px 10px;cursor:pointer;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:8px;border-radius:6px 6px 0 0}
+.tab:hover{background:rgba(128,128,128,.12)}
+.tab .i{color:var(--muted)}
+.tab.active{font-weight:600;border-bottom-color:var(--sel)}
+.cnt{background:rgba(128,128,128,.2);border-radius:2em;padding:0 6px;font-size:12px;font-weight:500;min-width:20px;text-align:center}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 48px}
 .view{display:none}.view.active{display:block}
-.av{width:34px;height:34px;border-radius:50%;background:var(--soft);color:var(--brand2);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
-/* cards */
+/* box */
+.box{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);min-width:0}
+.box>h2{margin:0;padding:12px 16px;font-size:14px;font-weight:600;background:var(--canvas);border-bottom:1px solid var(--line);border-radius:var(--r) var(--r) 0 0}
+.bd{padding:16px}
 .grid{display:grid;gap:16px}
-.stats{grid-template-columns:repeat(5,minmax(0,1fr))}
 .two{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}
-.even{grid-template-columns:repeat(2,minmax(0,1fr))}
-.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--sh);min-width:0}
-.card h2{font-size:16px;margin:0 0 14px;letter-spacing:-.01em}
-.stat{display:flex;gap:12px;align-items:center;padding:16px}
-.stat .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:19px;flex:none;background:var(--soft)}
-.stat b{font-size:24px;line-height:1;display:block;letter-spacing:-.02em}.stat span{color:var(--muted);font-size:12px}
+.even{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.stats{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px}
+.stat{padding:14px 16px;display:flex;gap:12px;align-items:center}
+.stat .ic{font-size:20px}.stat b{display:block;font-size:22px;line-height:1.1}.stat span{color:var(--muted);font-size:12px}
+.flash{border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--bg));border-radius:var(--r);padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.flash h2{margin:0;font-size:16px}.flash p{margin:2px 0 0;color:var(--muted)}
+.flash .acts{display:flex;gap:8px}
 /* forms */
-label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px}
-input,textarea,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surf2);font-size:16px;min-height:44px}
-@media(min-width:900px){input,textarea,select{font-size:14px}}
-input:focus,textarea:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;background:var(--surf)}
-textarea{resize:vertical}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:var(--on);border:0;border-radius:12px;padding:12px 20px;cursor:pointer;font-weight:700;margin-top:18px;min-height:46px;transition:transform .1s,background .15s}
-.btn:hover{background:var(--brand2);color:#fff}.btn:active{transform:scale(.98)}
-.btn:disabled{opacity:.6;cursor:wait}.btn.full{width:100%}
-.ghost{background:none;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--muted);font-weight:600}
-.ghost:hover{color:var(--text);border-color:var(--muted)}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.filters{display:flex;gap:10px;margin-bottom:12px}.filters input{flex:2}.filters select{flex:1;min-width:130px}
-.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;color:var(--muted);background:var(--surf2);transition:.15s}
-.drop b{color:var(--text);display:block}.drop small{display:block;margin-top:2px}
-.drop.over,.drop:hover{border-color:var(--brand);background:var(--soft)}
+label.f{display:block;font-weight:600;margin:14px 0 6px;font-size:14px}
+label.f:first-child{margin-top:0}
+input,textarea,select{width:100%;padding:5px 12px;min-height:32px;border:1px solid var(--line);border-radius:var(--r);background:var(--inset);box-shadow:inset 0 1px 0 rgba(208,215,222,.2)}
+textarea{padding:8px 12px;resize:vertical}
+@media(max-width:900px){input,textarea,select{font-size:16px;min-height:40px}}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent);background:var(--bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid rgba(31,35,40,.15);background:var(--okbtn);color:#fff;border-radius:var(--r);padding:5px 16px;min-height:32px;font-weight:500;cursor:pointer;margin-top:16px}
+.btn:hover{background:var(--okbtn2)}.btn:disabled{opacity:.6;cursor:wait}.btn.full{width:100%}
+.btn.sec{background:var(--canvas);color:var(--text);border-color:var(--line)}.btn.sec:hover{background:var(--line2)}
+.btn.s{margin:0}
 .hint{font-size:12px;color:var(--muted);margin-top:8px}
-.empty{color:var(--muted);padding:28px 12px;text-align:center}
-/* table → cards on phone */
-.scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
-tr:last-child td{border-bottom:0}
-.who{display:flex;align-items:center;gap:10px}.who small{display:block;color:var(--muted);font-size:12px;word-break:break-all}
-.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--surf2);color:var(--muted)}
-.shortlisted{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
-.matched{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
-.ranked{background:color-mix(in srgb,var(--vio) 16%,transparent);color:var(--vio)}
-.interview_scheduled{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
-.rejected{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
-.ring{--p:0;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--rc,var(--brand)) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
-.ring b{width:36px;height:36px;border-radius:50%;background:var(--surf);display:grid;place-items:center;font-size:12px}
-.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:99px}
-.chips{display:flex;flex-wrap:wrap;gap:4px}.chip{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:1px 8px;font-size:12px}
-/* lists */
-.item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}
-.item .t{min-width:0;flex:1}.item small{color:var(--muted);display:block;overflow-wrap:anywhere}
-.item a{color:var(--brand2);font-weight:600}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.filters{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}.filters input{flex:2}.filters select{flex:1;min-width:130px}
+.drop{display:block;border:1px dashed var(--line);border-radius:var(--r);padding:18px 14px;text-align:center;cursor:pointer;color:var(--muted);background:var(--canvas)}
+.drop b{color:var(--text);display:block}.drop.over,.drop:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg))}
+/* rows */
+.rw{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.rw:last-child{border-bottom:0}.rw:hover{background:var(--canvas)}
+.rw .t{min-width:0;flex:1}.rw .t b{font-weight:600}
+.rw small,small.m{color:var(--muted);display:block;overflow-wrap:anywhere;font-size:12px}
+.empty{color:var(--muted);padding:32px 16px;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.chip{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-radius:2em;padding:0 8px;font-size:12px;font-weight:500;line-height:18px}
+.lbl{display:inline-block;border:1px solid var(--line);border-radius:2em;padding:0 8px;font-size:12px;font-weight:500;line-height:18px;white-space:nowrap;color:var(--muted)}
+.shortlisted{color:var(--accent);border-color:var(--accent)}.matched{color:var(--warn);border-color:var(--warn)}.ranked{color:var(--vio);border-color:var(--vio)}
+.interview_scheduled{color:var(--ok);border-color:var(--ok)}.rejected{color:var(--bad);border-color:var(--bad)}
+.ring{--p:0;width:40px;height:40px;border-radius:50%;background:conic-gradient(var(--rc,var(--ok)) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
+.ring b{width:30px;height:30px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:11px}
+.ring.big{width:84px;height:84px}.ring.big b{width:68px;height:68px;font-size:20px}
+.bar{height:8px;background:var(--line2);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.fun{display:grid;grid-template-columns:100px 1fr 28px;gap:10px;align-items:center;margin:10px 0}.fun b{text-align:right}
+.pod3{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.pod3:empty{display:none}
+.pod{text-align:center;padding:20px 16px}.pod:first-child{border-color:#d4a72c}
+.tl .rw{position:relative;align-items:flex-start}
 /* pipeline */
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
-.step{background:var(--surf2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;font-size:12px;font-weight:600;color:var(--muted)}
-.step span{display:block;font-size:20px;margin-bottom:2px}
-.step.on{animation:pulse 1s infinite alternate;border-color:var(--brand);color:var(--brand2)}.step.done{background:var(--soft);border-color:var(--brand);color:var(--brand2)}.step.skip{opacity:.4}
-@keyframes pulse{to{border-color:var(--brand);color:var(--brand2);background:var(--soft)}}
-.res{margin-top:20px;padding:16px;border-radius:14px;background:var(--surf2);border:1px solid var(--line)}
-.warnbox{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.step{border:1px solid var(--line);border-radius:var(--r);padding:10px 6px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);background:var(--canvas)}
+.step span{display:block;font-size:18px}
+.step.on{border-color:var(--accent);color:var(--accent);animation:pulse 1s infinite alternate}
+.step.done{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--bg))}.step.skip{opacity:.4}
+@keyframes pulse{to{background:color-mix(in srgb,var(--accent) 12%,var(--bg))}}
+.res{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--canvas)}
+.warnbox{border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);background:color-mix(in srgb,var(--warn) 12%,var(--bg));color:var(--warn);border-radius:var(--r);padding:8px 12px;margin-top:12px}
 /* toast + login */
 #toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px))}
-.toast{padding:12px 16px;border-radius:12px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3);font-weight:600}.toast.ok{background:#15803d}.toast.err{background:#b91c1c}
-#login_overlay{position:fixed;inset:0;background:linear-gradient(135deg,rgba(11,92,86,.92),rgba(19,35,43,.96));display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
-#login_box{background:var(--surf);padding:32px 28px;border-radius:20px;width:380px;max-width:100%}
-#login_box h2{margin:0 0 4px;font-size:22px}#login_box p{margin:0;color:var(--muted)}
+.toast{padding:10px 14px;border-radius:var(--r);color:#fff;box-shadow:0 8px 24px rgba(1,4,9,.4);font-weight:500}.toast.ok{background:#1a7f37}.toast.err{background:#cf222e}
+#login_overlay{position:fixed;inset:0;background:var(--canvas);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100;padding:16px;gap:16px}
+#login_overlay .lg{font-size:48px;line-height:1}
+#login_box{background:var(--bg);border:1px solid var(--line);padding:20px;border-radius:var(--r);width:320px;max-width:100%}
+#login_box h2{margin:0 0 12px;font-size:20px;font-weight:300;text-align:center}
 #login_error{color:var(--bad);font-size:13px;min-height:20px;margin-top:8px}
-/* responsive */
 @media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:1fr}}
-@media(max-width:900px){
- :root{--side:0px}
- .side{inset:auto 0 0 0;width:auto;height:auto;flex-direction:row;padding:6px 8px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.08)}
- .logo,.side .me{display:none}
- .nav{flex-direction:row;width:100%;justify-content:space-around}
- .tab{flex-direction:column;gap:2px;padding:6px 4px;font-size:11px;text-align:center;justify-content:center;border-radius:10px}
- .wrap{padding:calc(18px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom))}
- .top{align-items:center}
-}
-@media(max-width:700px){
- .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats .stat:last-child{grid-column:1/-1}
- .even{grid-template-columns:1fr}.filters{flex-direction:column}
- .card{padding:16px}
- table,tbody,tr,td{display:block}thead,tr:has(th){display:none}
- tr{padding:12px 0;border-bottom:1px solid var(--line)}tr:last-child{border-bottom:0}
- td{display:flex;justify-content:space-between;gap:12px;border:0;padding:4px 0;text-align:right}
- td::before{content:attr(data-l);color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none}
- td.nm{display:block;text-align:left}td.nm::before{display:none}
- td .chips{justify-content:flex-end}
- .steps{grid-template-columns:repeat(2,1fr)}
- #toasts{left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:none}
-}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats .stat:last-child{grid-column:1/-1}.even,.pod3{grid-template-columns:1fr}.filters{flex-direction:column}.hdr .u span.n{display:none}.rw{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Recruit AI Studio — responsive visual system */
+:root{--bg:#f6f8fc;--canvas:#ffffff;--inset:#f6f8fa;--text:#1f2937;--muted:#64748b;--line:#dce3ed;--line2:#e9eef5;--accent:#2563eb;--ok:#15803d;--okbtn:#238636;--okbtn2:#1a7f37;--hdr:#0f172a;--hdrt:#f8fafc;--sel:#3b82f6;--r:12px;--sh:0 2px 14px rgba(15,23,42,.045)}
+:root[data-theme=dark]{--bg:#0b1018;--canvas:#121a26;--inset:#0b111b;--text:#edf2f9;--muted:#9aa9bc;--line:#2a3545;--line2:#202b3b;--accent:#69a7ff;--ok:#3fb950;--okbtn:#238636;--okbtn2:#2ea043;--hdr:#0d1420;--sel:#69a7ff;--sh:0 8px 28px rgba(0,0,0,.10)}
+html{scroll-behavior:smooth}body{font-size:15px;line-height:1.55;background:var(--bg)}
+.hdr{min-height:70px;padding:12px clamp(16px,3vw,48px);border-bottom:1px solid #293548;position:relative;z-index:5}
+.hdr .logo{font-size:19px;letter-spacing:-.6px;gap:11px}.hdr .logo em{font-style:normal;color:#8bbaff}.brand-mark{height:36px;width:36px;flex:none;display:block}
+.hdr .u{gap:12px}.hdr .av{height:32px;width:32px;font-size:12px}.hbtn{min-height:36px;padding:6px 12px;border-radius:8px}
+.pagehead{background:var(--canvas);padding:28px clamp(16px,3vw,48px) 0}.pagehead .in{max-width:1600px}.pagehead h1{font-size:clamp(24px,2.4vw,32px);letter-spacing:-.9px;gap:12px}.pagehead h1 small{font-size:11px;letter-spacing:.2px;padding:3px 10px}.pagehead p{font-size:14px;margin:3px 0 22px}
+.nav{gap:12px}.tab{font-size:14px;min-height:46px;padding:10px 14px 12px;gap:9px}.tab .i{font-size:18px;line-height:1}.tab.active{color:var(--accent);border-bottom-width:3px}
+.wrap{max-width:1600px;width:100%;padding:clamp(16px,2.5vw,36px) clamp(16px,3vw,48px) 80px}
+.grid{gap:20px}.stats{gap:16px;margin-bottom:22px}.stat{min-height:112px;padding:20px;gap:14px}.stat .ic{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,var(--canvas));font-size:23px}.stat b{font-size:clamp(24px,2.5vw,34px);letter-spacing:-1px}.stat span{font-size:13px}
+.box{overflow:hidden;box-shadow:var(--sh);border-radius:12px}.box>h2{padding:17px 20px;font-size:15px;background:var(--canvas)}.bd{padding:20px}
+.flash{padding:22px 26px;margin-bottom:20px;border-radius:14px;background:linear-gradient(115deg,color-mix(in srgb,var(--accent) 15%,var(--canvas)),var(--canvas) 72%);gap:16px}.flash h2{font-size:clamp(18px,2vw,23px);letter-spacing:-.5px}.flash p{font-size:14px}.flash .acts{flex-wrap:wrap}
+.btn{border-radius:8px;min-height:40px;padding:8px 16px;margin-top:18px;transition:background .15s,transform .15s}.btn:hover:not(:disabled){transform:translateY(-1px)}.btn.s{min-height:38px}.btn.sec{border-color:var(--line)}
+input,textarea,select{min-height:42px;padding:9px 12px;border-radius:8px;font-size:14px}textarea{min-height:100px}label.f{margin-top:17px}
+.rw{padding:15px 20px}.rw small{line-height:1.5}.rw .t{overflow-wrap:anywhere}.fun{grid-template-columns:minmax(70px,100px) minmax(0,1fr) 30px;gap:12px}.bar{height:9px}.empty{padding:36px 20px}.filters{flex-wrap:wrap}.filters input{min-width:170px}.filters select{min-width:140px}.steps{gap:10px}.step{padding:15px 8px;border-radius:10px}.step span{font-size:24px}
+#login_overlay{background:var(--bg)}#login_overlay .lg .brand-mark{width:62px;height:62px}#login_box{width:min(400px,100%);padding:28px;border-radius:16px;box-shadow:var(--sh)}#login_box h2{font-weight:600;font-size:22px}
+.drop{padding:26px 14px;border-radius:10px}.drop b{font-size:14px}.chip{line-height:22px}.lbl{line-height:22px}
+@media(min-width:1400px){.even{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}.two{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:1fr}.even{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.hdr{min-height:62px;padding:10px 16px}.hdr .logo{font-size:16px}.brand-mark{width:32px;height:32px}.hdr .u{gap:7px}.hdr .u span.n{display:none}.hbtn{padding:5px 9px;font-size:12px}.pagehead{padding:20px 16px 0}.pagehead h1{font-size:25px}.pagehead p{margin-bottom:14px}.nav{gap:4px;margin:0 -16px;padding:0 10px}.tab{font-size:13px;padding:10px 11px}.wrap{padding:18px 14px 60px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stats .stat:last-child{grid-column:auto}.stat{padding:15px;min-height:100px;gap:10px}.stat .ic{height:38px;width:38px;font-size:19px}.stat b{font-size:26px}.stat span{font-size:12px}.even,.pod3{grid-template-columns:1fr}.grid{gap:14px}.flash{padding:18px;align-items:flex-start}.flash .acts{width:100%}.flash .acts .btn{flex:1}.box>h2{padding:14px 16px}.bd{padding:16px}.rw{padding:13px 15px}.filters{flex-direction:column}.filters input,.filters select{width:100%}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.fun{grid-template-columns:75px minmax(0,1fr) 25px;font-size:13px}.row{grid-template-columns:1fr}.pod{padding:16px}}
+@media(max-width:380px){.hdr .logo span{font-size:14px}.hdr .av{display:none}.stat{padding:12px;gap:8px}.stat .ic{width:32px;height:32px}.stat b{font-size:23px}.flash .acts{flex-direction:column}.flash .acts .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+
+/* Full-width desktop workspace and spacious authentication */
+.pagehead .in,.wrap{max-width:none;width:100%;margin-inline:auto}
+.wrap{padding-inline:clamp(20px,3vw,64px)}
+.pagehead{padding-inline:clamp(20px,3vw,64px)}
+.pagehead .in{padding:0}
+#login_overlay{display:none;flex-direction:row;align-items:stretch;justify-content:stretch;padding:0;gap:0;background:var(--bg);min-height:100dvh;overflow-y:auto}
+.login-showcase{width:54%;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:clamp(32px,6vw,100px);background:radial-gradient(ellipse at 15% 15%,rgba(47,129,247,.24),transparent 55%),radial-gradient(ellipse at 90% 80%,rgba(163,113,247,.18),transparent 52%),#101827;color:#f8fafc;position:relative;overflow:hidden}
+.login-showcase:after{content:'';position:absolute;inset:0;opacity:.13;background-image:linear-gradient(#9bb5e1 1px,transparent 1px),linear-gradient(90deg,#9bb5e1 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(110deg,transparent,#000)}
+.showcase-inner{max-width:660px;position:relative;z-index:1}.showcase-kicker{color:#8ab4ff;font-size:13px;font-weight:700;letter-spacing:.16em;margin-bottom:28px}.showcase-inner h1{font-size:clamp(40px,4.3vw,76px);line-height:1.1;letter-spacing:-.05em;margin:0 0 28px}.showcase-inner h1 span{color:#79b0ff}.showcase-inner p{font-size:clamp(16px,1.2vw,20px);line-height:1.7;color:#b8c5d9;max-width:580px}.showcase-features{margin-top:46px;display:grid;gap:19px;font-size:16px;color:#e4eaf5}.showcase-footer{margin-top:90px;color:#8090ab;font-size:12px;letter-spacing:.15em}
+.login-form-side{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 28px;gap:22px}
+#login_overlay .lg .brand-mark{width:76px;height:76px}
+#login_box{width:min(460px,100%);padding:clamp(28px,3vw,44px);border-radius:18px;box-shadow:0 16px 60px rgba(0,0,0,.13)}
+#login_box h2{font-size:clamp(23px,2vw,30px);font-weight:700;margin-bottom:26px;letter-spacing:-.03em}
+#login_box label.f{font-size:14px;margin:18px 0 8px}#login_box input{min-height:48px;font-size:16px}#login_box .btn{min-height:48px;font-size:15px;margin-top:14px}
+@media(max-width:850px){.login-showcase{display:none}.login-form-side{min-height:100dvh;width:100%;padding:24px 18px}#login_box{width:min(440px,100%)}.wrap{padding-inline:16px}.pagehead{padding-inline:16px}}
+@media(min-width:1800px){.wrap{padding-inline:clamp(48px,4vw,100px)}.pagehead{padding-inline:clamp(48px,4vw,100px)}.stats{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+/* Readability-first correction: avoid stretching tiny content across ultrawide screens */
+html{font-size:16px}body{font-size:16px;line-height:1.6}
+.pagehead .in,.wrap{width:min(100%,1440px);max-width:1440px;margin-inline:auto}
+.wrap{padding:28px 28px 90px}.pagehead{padding:28px 28px 0}
+.hdr{min-height:76px;padding-inline:max(24px,calc((100vw - 1384px)/2))}
+.pagehead h1{font-size:30px}.pagehead p{font-size:15px}
+.nav .tab{font-size:15px;padding:13px 17px;min-height:52px}
+.flash{padding:26px 30px;margin-bottom:24px;min-height:108px}
+.flash h2{font-size:24px}.flash p{font-size:15px}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:24px}
+.stat{min-height:128px;padding:24px;gap:18px}.stat .ic{width:52px;height:52px;font-size:26px}
+.stat b{font-size:34px}.stat span{font-size:15px}
+.even{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px}
+.box>h2{font-size:17px;padding:18px 22px}.bd{padding:22px}
+.fun{font-size:15px;grid-template-columns:110px minmax(0,1fr) 35px;margin:15px 0}.bar{height:12px}
+.rw{padding:18px 22px;font-size:15px}.rw small,small.m{font-size:13px;line-height:1.6}
+.btn{font-size:15px;min-height:44px}.btn.s{min-height:42px}
+@media(min-width:1150px){.stats .stat:nth-child(4),.stats .stat:nth-child(5){grid-column:auto}}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.even{grid-template-columns:1fr}.wrap{padding:24px 20px 70px}.pagehead{padding-inline:20px}}
+@media(max-width:650px){.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stat{padding:14px;min-height:105px;gap:9px}.stat .ic{width:38px;height:38px;font-size:19px}.stat b{font-size:27px}.stat span{font-size:12px}.pagehead{padding:18px 14px 0}.pagehead h1{font-size:25px}.wrap{padding:16px 14px 60px}.flash{padding:18px;min-height:0}.flash h2{font-size:20px}.nav .tab{font-size:13px;padding:10px 12px;min-height:44px}.box>h2{font-size:15px;padding:14px 16px}.bd{padding:16px}.rw{padding:14px 16px}.fun{grid-template-columns:80px minmax(0,1fr) 25px;font-size:13px}.hdr{padding-inline:14px}}
+
+/* Final legibility and layout pass */
+:root{--content-max:1480px}
+body{font-size:16px!important;line-height:1.55}
+.pagehead .in,.wrap{max-width:var(--content-max);width:100%;margin-inline:auto}
+.wrap{padding:28px clamp(18px,2.6vw,38px) 80px}
+.pagehead{padding:25px clamp(18px,2.6vw,38px) 0}
+.stats{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.stat{min-height:110px;padding:18px;gap:12px}
+.stat b{font-size:30px}.stat span{font-size:14px}
+.even{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+.two{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
+#v-candidates .two{grid-template-columns:minmax(340px,0.9fr) minmax(0,1.35fr)}
+#v-candidates .filters{flex-direction:row}
+#v-candidates .filters input{min-width:0}
+#v-candidates .filters select{min-width:135px}
+#login_box{width:min(480px,100%)}
+#login_box h2{font-size:27px}
+.showcase-inner{max-width:610px}
+@media(max-width:1150px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two,#v-candidates .two{grid-template-columns:1fr}.even{grid-template-columns:1fr}}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-height:96px;padding:13px}.stat b{font-size:27px}.stat span{font-size:13px}.wrap{padding:18px 14px 60px}.pagehead{padding:18px 14px 0}#v-candidates .filters{flex-direction:column}.rw{gap:10px}.login-showcase{display:none}.login-form-side{min-height:100dvh}}
+
+/* Header visibility fix — based on recruit_ai_final_responsive.html */
+html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
+.hdr{position:relative!important;inset:auto!important;display:flex!important;align-items:center!important;justify-content:space-between!important;visibility:visible!important;opacity:1!important;transform:none!important;zoom:1!important;height:auto!important;min-height:72px!important;margin:0!important;padding:12px clamp(18px,3vw,48px)!important;background:var(--hdr)!important;border-bottom:1px solid var(--line)!important;z-index:20!important}
+.hdr .logo{display:flex!important;align-items:center!important;gap:11px;flex:0 0 auto;font-size:19px!important;line-height:1.2;color:#f3f6fb;white-space:nowrap}
+.hdr .brand-mark{display:block!important;width:38px;height:38px}
+.hdr .sp{flex:1 1 auto;min-width:12px}
+.hdr .u{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:12px;flex:0 1 auto;min-width:0}
+.recruiter-identity{display:flex;align-items:center;gap:10px;min-width:0;padding-right:14px;border-right:1px solid rgba(255,255,255,.18)}
+.recruiter-identity .av{height:34px;width:34px;font-size:12px;flex:none}
+.identity-text{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.identity-caption{font-size:11px;color:#aebbd0;font-weight:500}
+.hdr .u .identity-text .n{display:block!important;color:#f3f6fb;font-size:14px;font-weight:650;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr .hbtn{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:7px 13px;white-space:nowrap;flex:none;background:rgba(255,255,255,.035);border:1px solid rgba(240,246,252,.23);color:#fff;font-size:13px;font-weight:600}
+.hdr .hbtn:hover{background:rgba(255,255,255,.13)}
+.hdr .themebtn{min-width:42px;font-size:19px}
+@media(max-width:600px){.hdr{min-height:64px!important;padding:10px 12px!important;gap:6px}.hdr .logo{font-size:16px!important;gap:6px}.hdr .brand-mark{height:30px;width:30px}.hdr .u{gap:6px}.recruiter-identity{gap:6px;padding-right:7px}.identity-caption{display:none}.recruiter-identity .av{height:29px;width:29px}.hdr .u .identity-text .n{max-width:78px;font-size:12px}.hdr .hbtn{min-height:34px;padding:5px 8px;font-size:12px}.hdr .themebtn{min-width:35px;font-size:16px}}
+@media(max-width:390px){.recruiter-identity .av{display:none}.hdr .u .identity-text .n{max-width:58px}.hdr .logo{font-size:14px!important}}
+
+
+/* GitHub-like comfortable density: compact spacing, never scale the page. */
+@media(min-width:721px){
+  body{font-size:15px!important;line-height:1.5}
+  .hdr{min-height:62px!important;padding:9px clamp(18px,2.7vw,40px)!important}
+  .hdr .logo{font-size:17px!important}.hdr .brand-mark{width:32px;height:32px}
+  .hdr .hbtn{min-height:34px;padding:5px 11px;font-size:12px}
+  .hdr .themebtn{min-width:36px;font-size:17px}
+  .recruiter-identity .av{width:30px;height:30px}
+  .pagehead{padding:19px clamp(18px,2.6vw,38px) 0}
+  .pagehead .in,.wrap{max-width:1480px}
+  .pagehead h1{font-size:26px}.pagehead p{font-size:14px;margin-bottom:14px}
+  .nav .tab{min-height:43px;padding:9px 14px;font-size:14px}
+  .wrap{padding:22px clamp(18px,2.6vw,38px) 64px}
+  .grid{gap:16px}.stats{gap:13px;margin-bottom:18px}
+  .flash{min-height:88px;padding:18px 24px;margin-bottom:18px}
+  .flash h2{font-size:20px}.flash p{font-size:13px}
+  .stat{min-height:96px;padding:16px;gap:12px}
+  .stat .ic{height:42px;width:42px;font-size:21px}
+  .stat b{font-size:28px}.stat span{font-size:13px}
+  .box>h2{padding:13px 18px;font-size:15px}.bd{padding:18px}
+  .rw{padding:13px 18px;font-size:14px}
+  .rw small,small.m{font-size:12px}
+  .fun{font-size:14px;grid-template-columns:100px minmax(0,1fr) 30px;margin:11px 0}
+  .bar{height:9px}
+  .btn{min-height:38px;font-size:14px;padding:7px 14px}
+  .btn.s{min-height:36px}
+  .filters{padding:10px 14px}
+  label.f{margin-top:12px}
+  .step{padding:11px 7px}
+  #login_box{width:min(420px,100%);padding:30px}
+  #login_box h2{font-size:24px;margin-bottom:18px}
+  #login_box input{min-height:43px;font-size:15px}
+  #login_box label.f{margin:12px 0 6px}
+  #login_box .btn{min-height:43px}
+  .showcase-inner{max-width:540px}
+  .showcase-inner h1{font-size:clamp(38px,3.6vw,60px);margin-bottom:18px}
+  .showcase-inner p{font-size:clamp(15px,1.1vw,18px)}
+  .showcase-features{margin-top:30px;gap:14px;font-size:15px}
+  .showcase-footer{margin-top:60px}
+}
+@media(min-width:721px) and (max-width:1150px){
+  .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .two,#v-candidates .two{grid-template-columns:1fr}
+  .even{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  /* Keep touch targets and 16px inputs on phones. */
+  .hdr{min-height:60px!important}
+  .pagehead p{margin-bottom:12px}
+  .wrap{padding-top:15px}
+  .flash{margin-bottom:15px}
+  .stats{margin-bottom:16px}
+  .grid{gap:13px}
+  input,textarea,select{font-size:16px}
+}
+
 </style>
 </head>
 <body>
 
-<div id="login_overlay"><div id="login_box">
-  <h2>Recruiter login</h2><p>Sign in to manage candidates and jobs.</p>
+<div id="login_overlay"><div class="login-showcase"><div class="showcase-inner"><div class="showcase-kicker">RECRUIT AI · INTELLIGENT HIRING</div><h1>Build your dream team.<br><span>Powered by AI.</span></h1><p>Manage jobs, discover great candidates and streamline every step of your hiring process from one beautiful workspace.</p><div class="showcase-features"><div>✦ &nbsp; AI-powered candidate matching</div><div>✦ &nbsp; Smart resume screening</div><div>✦ &nbsp; Automated interview pipeline</div></div><div class="showcase-footer">RECRUIT AI / WORKSPACE</div></div></div><div class="login-form-side"><div class="lg"><svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><defs><linearGradient id="brandGradient" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#a371f7"/></linearGradient></defs><rect x="2" y="2" width="44" height="44" rx="13" fill="url(#brandGradient)"/><path d="M13 33V15h11c7 0 11 4 11 9s-4 9-11 9H13Zm8-12v6h4c3 0 4-1 4-3s-1-3-4-3h-4Z" fill="#fff"/><circle cx="36" cy="12" r="4" fill="#3fb950" stroke="#161b22" stroke-width="2"/></svg></div><div id="login_box">
+  <h2>Sign in to Recruit AI</h2>
   <label class="f">Username</label><input id="login_user" autocomplete="username">
   <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password">
   <div id="login_error" role="alert"></div>
-  <button class="btn full" style="margin-top:6px" onclick="login()">Log in</button>
+  <button class="btn full" style="margin-top:6px" onclick="login()">Sign in</button>
+</div></div></div>
+
+<header class="hdr" role="banner">
+  <div class="logo" aria-label="Recruit AI"><svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><defs><linearGradient id="brandGradient" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#a371f7"/></linearGradient></defs><rect x="2" y="2" width="44" height="44" rx="13" fill="url(#brandGradient)"/><path d="M13 33V15h11c7 0 11 4 11 9s-4 9-11 9H13Zm8-12v6h4c3 0 4-1 4-3s-1-3-4-3h-4Z" fill="#fff"/><circle cx="36" cy="12" r="4" fill="#3fb950" stroke="#161b22" stroke-width="2"/></svg><span>Recruit <em>AI</em></span></div>
+  <div class="sp"></div>
+  <div class="u"><div class="recruiter-identity"><span class="av" id="av">?</span><div class="identity-text"><span class="identity-caption">Recruiter</span><strong class="n" id="who">Account</strong></div></div>
+    <button type="button" class="hbtn themebtn" onclick="toggleTheme()" title="Switch light/dark theme" aria-label="Switch light/dark theme">🌙</button>
+    <button type="button" class="hbtn logoutbtn" onclick="logout()" title="Sign out of Recruit AI">Sign out</button></div>
+</header>
+
+<div class="pagehead"><div class="in">
+  <h1><span id="title">Dashboard</span><small>Recruiter</small></h1><p id="sub"></p>
+  <nav class="nav" id="tabs">
+    <button class="tab" data-t="overview"><span class="i">◫</span>Dashboard</button>
+    <button class="tab" data-t="jobs"><span class="i">▤</span>Jobs<span class="cnt" id="n_jobs">0</span></button>
+    <button class="tab" data-t="candidates"><span class="i">♙</span>Candidates<span class="cnt" id="n_cands">0</span></button>
+    <button class="tab" data-t="pipeline"><span class="i">✧</span>Pipeline</button>
+    <button class="tab" data-t="rankings"><span class="i">♛</span>Leaderboard</button>
+  </nav>
 </div></div>
 
-<aside class="side">
-  <div class="logo"><i>🤖</i><div>Recruit AI<small>Hiring assistant</small></div></div>
-  <nav class="nav" id="tabs">
-    <button class="tab" data-t="overview"><span class="i">📊</span>Dashboard</button>
-    <button class="tab" data-t="jobs"><span class="i">📋</span>Jobs</button>
-    <button class="tab" data-t="candidates"><span class="i">👤</span>Candidates</button>
-    <button class="tab" data-t="pipeline"><span class="i">⚙️</span>Pipeline</button>
-    <button class="tab" data-t="rankings"><span class="i">🏆</span>Leaderboard</button>
-  </nav>
-  <div class="me"><span class="av" id="av">?</span><div><b id="who"></b><small>Recruiter</small></div><button class="ghost themebtn" onclick="toggleTheme()" title="Toggle theme">🌙</button><button class="ghost" onclick="logout()" title="Log out">⎋</button></div>
-</aside>
-
 <div class="wrap">
-  <div class="top"><div><h1 id="title">Overview</h1><p id="sub"></p></div><div id="mact" style="display:none;gap:8px"><button class="ghost themebtn" onclick="toggleTheme()" title="Toggle theme">🌙</button><button class="ghost" onclick="logout()">Log out</button></div></div>
-
   <section class="view" id="v-overview">
-    <div class="hero"><div><h2 id="hello"></h2><p id="hsub"></p></div>
-      <div class="acts"><button onclick="show('candidates')">Add candidate</button><button class="o" onclick="show('pipeline')">Run pipeline</button></div></div>
+    <div class="flash"><div><h2 id="hello"></h2><p id="hsub"></p></div>
+      <div class="acts"><button class="btn s" onclick="show('candidates')">Add candidate</button><button class="btn s sec" onclick="show('pipeline')">Run pipeline</button></div></div>
     <div class="grid stats" id="stats"></div>
-    <div class="grid even" style="margin-top:16px;align-items:start">
-      <div class="grid" style="gap:16px">
-        <div class="card"><h2>Hiring funnel</h2><div id="funnel"></div></div>
-        <div class="card"><h2>Scheduled interviews</h2><div id="ov_int"></div></div>
+    <div class="grid even">
+      <div class="grid">
+        <div class="box"><h2>Hiring funnel</h2><div class="bd" id="funnel"></div></div>
+        <div class="box"><h2>Scheduled interviews</h2><div id="ov_int"></div></div>
       </div>
-      <div class="card"><h2>Recent agent activity</h2><div id="ov_logs" class="tl"></div></div>
+      <div class="box"><h2>Recent agent activity</h2><div id="ov_logs" class="tl"></div></div>
     </div>
   </section>
 
   <section class="view" id="v-jobs">
     <div class="grid two">
-      <div class="card"><h2>Add a job</h2>
-        <label class="f" style="margin-top:0">Title</label><input id="job_title" placeholder="Backend Developer">
+      <div class="box"><h2>New job</h2><div class="bd">
+        <label class="f">Title</label><input id="job_title" placeholder="Backend Developer">
         <label class="f">Required skills</label><input id="job_skills" placeholder="Python, Django, SQL">
         <label class="f">Minimum experience (years)</label><input id="job_exp" type="number" min="0" value="0" inputmode="numeric">
         <label class="f">Description</label><textarea id="job_desc" rows="4"></textarea>
-        <button class="btn full" onclick="addJob(this)">Add job</button>
+        <button class="btn full" onclick="addJob(this)">Create job</button></div>
       </div>
-      <div class="card"><h2>All jobs</h2><div id="jobs_list"></div></div>
+      <div class="box"><h2>All jobs</h2><div id="jobs_list"></div></div>
     </div>
   </section>
 
   <section class="view" id="v-candidates">
-    <div class="card" style="margin-bottom:16px"><h2>🔎 Semantic search (AI)</h2>
-      <div class="filters" style="margin-bottom:0"><input id="sq" placeholder="e.g. who has built REST APIs with Django?" onkeydown="if(event.key==='Enter')semSearch($('sbtn'))"><button class="btn" id="sbtn" style="margin:0;flex:none" onclick="semSearch(this)">Search</button></div>
+    <div class="box" style="margin-bottom:16px"><h2>🔎 Semantic search</h2><div class="bd">
+      <div style="display:flex;gap:8px"><input id="sq" placeholder="e.g. who has built REST APIs with Django?" onkeydown="if(event.key==='Enter')semSearch($('sbtn'))"><button class="btn s" id="sbtn" onclick="semSearch(this)">Search</button></div></div>
       <div id="sres"></div></div>
     <div class="grid two">
-      <div class="card"><h2>Add a candidate</h2>
+      <div class="box"><h2>New candidate</h2><div class="bd">
         <label class="drop" id="drop"><input type="file" id="file" accept=".pdf,.docx,.txt" hidden>
-          <b>Drop a resume here or tap to browse</b><small>PDF, DOCX or TXT, max 5 MB. Fields fill automatically.</small></label>
+          <b>Drop a resume here or click to browse</b><small class="m">PDF, DOCX or TXT, max 5 MB. Fields fill automatically.</small></label>
         <div class="hint" id="upmsg" aria-live="polite"></div>
         <label class="f">Full name</label><input id="c_name" autocomplete="name">
         <div class="row"><div><label class="f">Email</label><input id="c_email" type="email" inputmode="email"></div><div><label class="f">Phone</label><input id="c_phone" type="tel" inputmode="tel"></div></div>
         <div class="row"><div><label class="f">Skills</label><input id="c_skills" placeholder="Python, Django"></div><div><label class="f">Experience (years)</label><input id="c_exp" type="number" min="0" value="0" inputmode="numeric"></div></div>
         <label class="f">Resume text</label><textarea id="c_resume" rows="5" placeholder="Filled after upload, or paste it here"></textarea>
-        <button class="btn full" onclick="addCandidate(this)">Add candidate</button>
+        <button class="btn full" onclick="addCandidate(this)">Add candidate</button></div>
       </div>
-      <div class="card"><h2>All candidates</h2>
-        <div class="filters"><input id="q" placeholder="Search name or skills" oninput="renderCands()">
+      <div class="box"><h2>All candidates</h2>
+        <div class="filters"><input id="q" placeholder="Find by name or skill" oninput="renderCands()">
           <select id="sf" onchange="renderCands()"><option value="">All statuses</option><option>pending</option><option>shortlisted</option><option>matched</option><option>ranked</option><option>interview_scheduled</option><option>rejected</option></select></div>
         <div id="cands_list"></div>
       </div>
@@ -217,22 +345,22 @@ tr:last-child td{border-bottom:0}
 
   <section class="view" id="v-pipeline">
     <div class="grid two">
-      <div class="card"><h2>Choose who and what</h2>
-        <label class="f" style="margin-top:0">Candidate</label><select id="p_cand"></select>
+      <div class="box"><h2>Choose candidate and job</h2><div class="bd">
+        <label class="f">Candidate</label><select id="p_cand"></select>
         <label class="f">Job</label><select id="p_job"></select>
         <button class="btn full" onclick="runPipeline(this)">🚀 Run all 4 agents</button>
-        <p class="hint">The agents screen the resume, match it to the job, rank the candidate and book an interview slot.</p>
+        <p class="hint">The agents screen the resume, match it to the job, rank the candidate and book an interview slot.</p></div>
       </div>
-      <div class="card"><h2>Agent progress</h2>
-        <div class="steps" id="steps" style="margin-top:0"><div class="step"><span>🔎</span>Screening</div><div class="step"><span>🧩</span>Matching</div><div class="step"><span>📈</span>Ranking</div><div class="step"><span>📅</span>Scheduling</div></div>
-        <div id="p_result"><div class="empty">Results will show here after you run the pipeline.</div></div>
+      <div class="box"><h2>Agent progress</h2><div class="bd">
+        <div class="steps" id="steps"><div class="step"><span>🔎</span>Screening</div><div class="step"><span>🧩</span>Matching</div><div class="step"><span>📈</span>Ranking</div><div class="step"><span>📅</span>Scheduling</div></div>
+        <div id="p_result"><div class="empty">Results show here after you run the pipeline.</div></div></div>
       </div>
     </div>
   </section>
 
   <section class="view" id="v-rankings">
     <div class="grid pod3" id="podium"></div>
-    <div class="card"><h2>Full ranking</h2><div id="rank_list"></div></div>
+    <div class="box"><h2>Full ranking</h2><div id="rank_list"></div></div>
   </section>
 </div>
 <div id="toasts"></div>
@@ -242,30 +370,24 @@ const $ = id => document.getElementById(id);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const errText = d => !d ? 'Unknown error' : d.detail || Object.entries(d).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(' ') : v)).join(' | ');
 const readJson = async r => { try { return await r.json(); } catch (e) { return {}; } };
-const badge = s => `<span class="badge ${esc(s)}">${esc(String(s).replace('_', ' '))}</span>`;
+const badge = s => `<span class="lbl ${esc(s)}">${esc(String(s).replace('_', ' '))}</span>`;
 const when = d => d ? esc(String(d).slice(0, 16).replace('T', ' ')) : '-';
 const empty = t => `<div class="empty">${t}</div>`;
 const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase());
 const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
 const ring = (s, big) => { const v = Math.max(0, Math.min(100, Number(s) || 0)); return `<div class="ring${big ? ' big' : ''}" style="--p:${v};--rc:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)'}"><b>${Math.round(v)}</b></div>`; };
 
-const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Run pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score']};
+const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score']};
 
-function toast(msg, type = 'ok') {
-  const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg;
-  $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500);
-}
-async function busy(btn, fn) {
-  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…';
-  try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; }
-}
+function toast(msg, type = 'ok') { const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500); }
+async function busy(btn, fn) { const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…'; try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; } }
 
-// ---------- theme ----------
-function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('theme', t); } catch (e) {} document.querySelectorAll('.themebtn').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); }
+// theme
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('theme', t); } catch (e) {} document.querySelectorAll('.themebtn').forEach(b => { b.textContent = t === 'dark' ? '☀️' : '🌙'; b.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'); b.title = t === 'dark' ? 'Light mode' : 'Dark mode'; }); }
 const toggleTheme = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-setTheme(localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+setTheme((() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
-// ---------- auth (JWT) ----------
+// auth (JWT)
 const showLogin = m => { $('login_overlay').style.display = 'flex'; $('login_error').textContent = m || ''; };
 async function login() {
   const username = $('login_user').value.trim(), password = $('login_pass').value;
@@ -275,7 +397,7 @@ async function login() {
   localStorage.setItem('access', data.access); localStorage.setItem('refresh', data.refresh); localStorage.setItem('username', username);
   $('login_pass').value = ''; $('login_overlay').style.display = 'none'; start();
 }
-function logout() { ['access', 'refresh', 'username'].forEach(k => localStorage.removeItem(k)); $('who').textContent = ''; showLogin('You have been logged out.'); }
+function logout() { ['access', 'refresh', 'username'].forEach(k => localStorage.removeItem(k)); $('who').textContent = ''; showLogin('You have been signed out.'); }
 async function refreshAccess() {
   const refresh = localStorage.getItem('refresh'); if (!refresh) return false;
   const res = await fetch('/api/auth/refresh/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({refresh})});
@@ -286,13 +408,13 @@ async function api(url, opts = {}, retry = true) {
   opts.headers = Object.assign({}, opts.headers || {});
   const t = localStorage.getItem('access'); if (t) opts.headers.Authorization = 'Bearer ' + t;
   const res = await fetch(url, opts);
-  if (res.status === 401) { if (retry && await refreshAccess()) return api(url, opts, false); showLogin('Please log in to continue.'); }
+  if (res.status === 401) { if (retry && await refreshAccess()) return api(url, opts, false); showLogin('Please sign in to continue.'); }
   return res;
 }
 const jsonPost = (url, body) => api(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && $('login_overlay').style.display === 'flex') login(); });
 
-// ---------- tabs ----------
+// tabs
 function show(name) {
   if (!$('v-' + name)) name = 'overview';
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'v-' + name));
@@ -301,18 +423,12 @@ function show(name) {
   location.hash = name; scrollTo(0, 0);
 }
 $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); });
-const mq = matchMedia('(max-width:900px)');
-const syncLogout = () => $('mact').style.display = mq.matches ? 'flex' : 'none';
-mq.addEventListener('change', syncLogout); syncLogout();
 
-// ---------- data ----------
+// data
 let jobs = [], cands = [];
 const load = async url => { const r = await api(url); return r.ok ? r.json() : []; };
-async function refresh() {
-  const [j, c] = await Promise.all([load('/api/jobs/'), load('/api/candidates/')]);
-  jobs = j; cands = c; renderAll();
-}
-function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); }
+async function refresh() { const [j, c] = await Promise.all([load('/api/jobs/'), load('/api/candidates/')]); jobs = j; cands = c; renderAll(); }
+function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); $('n_jobs').textContent = jobs.length; $('n_cands').textContent = cands.length; }
 
 function renderHero() {
   const h = new Date().getHours(), u = localStorage.getItem('username') || '';
@@ -321,28 +437,24 @@ function renderHero() {
   $('hsub').textContent = cands.length ? `${cands.length} candidates across ${jobs.length} jobs. ${i} interview${i === 1 ? '' : 's'} scheduled.` : 'Add a job and a candidate, then run the pipeline.';
 }
 function renderFunnel() {
-  const st = [['pending', 'Pending', 'var(--muted)'], ['shortlisted', 'Shortlisted', 'var(--blue)'], ['matched', 'Matched', 'var(--warn)'], ['ranked', 'Ranked', 'var(--vio)'], ['interview_scheduled', 'Interview', 'var(--ok)'], ['rejected', 'Rejected', 'var(--bad)']];
+  const st = [['pending', 'Pending', 'var(--muted)'], ['shortlisted', 'Shortlisted', 'var(--accent)'], ['matched', 'Matched', 'var(--warn)'], ['ranked', 'Ranked', 'var(--vio)'], ['interview_scheduled', 'Interview', 'var(--ok)'], ['rejected', 'Rejected', 'var(--bad)']];
   const max = Math.max(1, ...st.map(([k]) => cands.filter(c => c.status === k).length));
   $('funnel').innerHTML = st.map(([k, l, col]) => { const n = cands.filter(c => c.status === k).length; return `<div class="fun"><span>${l}</span><div class="bar"><i style="width:${n / max * 100}%;background:${col}"></i></div><b>${n}</b></div>`; }).join('');
 }
 function renderStats() {
   const n = f => cands.filter(f).length;
-  const cards = [['📋', 'Jobs', jobs.length, 'var(--brand)'], ['👤', 'Candidates', cands.length, 'var(--vio)'],
-    ['✅', 'Shortlisted', n(c => ['shortlisted', 'matched', 'ranked'].includes(c.status)), 'var(--blue)'],
-    ['📅', 'Interviews', n(c => c.status === 'interview_scheduled'), 'var(--ok)'], ['🚫', 'Rejected', n(c => c.status === 'rejected'), 'var(--bad)']];
-  $('stats').innerHTML = cards.map(([i, l, v, c]) => `<div class="card stat"><div class="ic" style="--c:${c}">${i}</div><div><b>${v}</b><span>${l}</span></div></div>`).join('');
+  const cards = [['💼', 'Jobs', jobs.length], ['👥', 'Candidates', cands.length], ['✅', 'Shortlisted', n(c => ['shortlisted', 'matched', 'ranked'].includes(c.status))], ['📅', 'Interviews', n(c => c.status === 'interview_scheduled')], ['⛔', 'Rejected', n(c => c.status === 'rejected')]];
+  $('stats').innerHTML = cards.map(([i, l, v]) => `<div class="box stat"><div class="ic">${i}</div><div><b>${v}</b><span>${l}</span></div></div>`).join('');
 }
 function renderJobs() {
-  $('jobs_list').innerHTML = !jobs.length ? empty('No jobs yet. Add your first job on the left.') :
-    '<table><tr><th>ID</th><th>Title</th><th>Skills</th><th>Min exp</th></tr>' +
-    jobs.map(j => `<tr><td data-l="ID">#${esc(j.id)}</td><td class="nm"><b>${esc(j.title)}</b></td><td data-l="Skills">${chips(j.required_skills)}</td><td data-l="Min exp">${esc(j.min_experience)} yrs</td></tr>`).join('') + '</table>';
+  $('jobs_list').innerHTML = !jobs.length ? empty('No jobs yet. Create your first job on the left.') :
+    jobs.map(j => `<div class="rw"><div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small>${chips(j.required_skills, 6)}</div><span class="lbl">${esc(j.min_experience)}+ yrs</span></div>`).join('');
 }
 function renderCands() {
   const q = $('q').value.toLowerCase(), sf = $('sf').value;
   const rows = cands.filter(c => (!sf || c.status === sf) && (!q || (c.name + ' ' + c.skills).toLowerCase().includes(q)));
   $('cands_list').innerHTML = !rows.length ? empty(cands.length ? 'No candidate matches this filter.' : 'No candidates yet. Upload a resume to start.') :
-    '<table><tr><th>Candidate</th><th>Skills</th><th>Exp</th><th>Score</th><th>Status</th></tr>' +
-    rows.map(c => `<tr><td class="nm"><div class="who"><span class="av">${ini(c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.email)}</small></div></div></td><td data-l="Skills">${chips(c.skills)}</td><td data-l="Experience">${esc(c.experience)} yrs</td><td data-l="Score">${c.score > 0 ? ring(c.score) : '-'}</td><td data-l="Status">${badge(c.status)}</td></tr>`).join('') + '</table>';
+    rows.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.experience)} yrs</small>${chips(c.skills)}</div>${c.score > 0 ? ring(c.score) : ''}${badge(c.status)}</div>`).join('');
 }
 function renderSelects() {
   const keep = [$('p_cand').value, $('p_job').value];
@@ -352,29 +464,28 @@ function renderSelects() {
 }
 function renderRank() {
   const r = cands.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
-  $('podium').innerHTML = r.slice(0, 3).map((c, i) => `<div class="card pod"><div style="font-size:32px">${['🥇', '🥈', '🥉'][i]}</div><h3 style="margin:6px 0 2px">${esc(c.name)}</h3><small style="color:var(--muted)">${esc(c.experience)} yrs experience</small><div style="display:grid;place-items:center;margin-top:12px">${ring(c.score, 1)}</div></div>`).join('');
+  $('podium').innerHTML = r.slice(0, 3).map((c, i) => `<div class="box pod"><div style="font-size:30px">${['🥇', '🥈', '🥉'][i]}</div><h3 style="margin:6px 0 2px">${esc(c.name)}</h3><small class="m">${esc(c.experience)} yrs experience</small><div style="display:grid;place-items:center;margin-top:12px">${ring(c.score, 1)}</div></div>`).join('');
   $('rank_list').innerHTML = !r.length ? empty('No scores yet. Run the pipeline on a candidate.') :
-    r.map((c, i) => `<div class="item" style="align-items:center"><div style="width:30px;font-size:20px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${esc(c.name)}</b><div style="margin-top:4px">${chips(c.skills, 6)}</div><div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
+    r.map((c, i) => `<div class="rw"><div style="width:28px;font-size:18px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${esc(c.name)}</b>${chips(c.skills, 6)}<div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
 }
 function renderInterviews() {
   const s = cands.filter(c => c.status === 'interview_scheduled');
   $('ov_int').innerHTML = !s.length ? empty('No interviews scheduled yet.') :
-    s.map(c => `<div class="item"><span class="av">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${when(c.interview_date)}</small><small>${esc(c.email)} · <a href="https://meet.google.com/recruitment-${encodeURIComponent(c.name.toLowerCase().replace(/ /g, '-'))}" target="_blank" rel="noopener">Join Meet</a></small></div></div>`).join('');
+    s.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${when(c.interview_date)}</small><small>${esc(c.email)} · <a href="https://meet.google.com/recruitment-${encodeURIComponent(c.name.toLowerCase().replace(/ /g, '-'))}" target="_blank" rel="noopener">Join Meet</a></small></div></div>`).join('');
 }
 async function loadLogs() {
   const logs = (await load('/api/logs/')).slice(-8).reverse();
   $('ov_logs').innerHTML = !logs.length ? empty('Agent activity will show here.') :
-    logs.map(l => `<div class="item"><span class="av" style="position:relative;z-index:1">🤖</span><div class="t"><b>${esc(l.from_agent)} → ${esc(l.to_agent)}</b> for ${esc(l.candidate__name)}<small>${esc(String(l.message).slice(0, 140))}</small></div></div>`).join('');
+    logs.map(l => `<div class="rw"><span class="av" style="background:var(--canvas);border:1px solid var(--line)">🤖</span><div class="t"><b>${esc(l.from_agent)} → ${esc(l.to_agent)}</b> for ${esc(l.candidate__name)}<small>${esc(String(l.message).slice(0, 140))}</small></div></div>`).join('');
 }
 
-// ---------- resume upload ----------
+// resume upload
 async function readResume(file) {
   if (!file) return;
   if (!/\.(pdf|docx|txt)$/i.test(file.name)) { $('upmsg').textContent = '⚠️ Only PDF, DOCX or TXT files are supported.'; return; }
   $('upmsg').textContent = '⏳ Reading resume…';
   const fd = new FormData(); fd.append('resume', file);
-  const res = await api('/api/parse-resume/', {method: 'POST', body: fd});
-  const d = await readJson(res);
+  const res = await api('/api/parse-resume/', {method: 'POST', body: fd}); const d = await readJson(res);
   if (!res.ok) { $('upmsg').textContent = '⚠️ ' + errText(d); return; }
   $('c_resume').value = d.text;
   const fill = (id, v) => { if (v && !$(id).value.trim()) $(id).value = v; };
@@ -386,24 +497,22 @@ $('file').onchange = e => readResume(e.target.files[0]);
 ['dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
 $('drop').addEventListener('drop', e => readResume(e.dataTransfer.files[0]));
 
-// ---------- actions ----------
+// actions
 const semSearch = btn => busy(btn, async () => {
   const q = $('sq').value.trim(); if (q.length < 2) return toast('Type at least 2 characters.', 'err');
   const res = await api('/api/search/?q=' + encodeURIComponent(q) + '&limit=5'); const d = await readJson(res);
   if (!res.ok) return toast(errText(d), 'err');
-  $('sres').innerHTML = !d.length ? empty('No indexed resumes matched yet.') : d.map(r => `<div class="item"><span class="av">${ini(r.name)}</span><div class="t"><b>${esc(r.name)}</b> · ${Math.round(r.similarity * 100)}% match<small>${esc(r.skills)}</small>${(r.evidence || []).map(e => `<small>“${esc(String(e.text).slice(0, 160))}” <span class="chip">${esc(e.section)}</span></small>`).join('')}</div></div>`).join('');
+  $('sres').innerHTML = !d.length ? empty('No indexed resumes matched yet.') : d.map(r => `<div class="rw" style="align-items:flex-start;border-top:1px solid var(--line2)"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(r.name)}</span><div class="t"><b>${esc(r.name)}</b> · ${Math.round(r.similarity * 100)}% match<small>${esc(r.skills)}</small>${(r.evidence || []).map(e => `<small>“${esc(String(e.text).slice(0, 160))}” <span class="chip">${esc(e.section)}</span></small>`).join('')}</div></div>`).join('');
 });
 const addJob = btn => busy(btn, async () => {
   const res = await jsonPost('/api/add-job/', {title: $('job_title').value, required_skills: $('job_skills').value, min_experience: $('job_exp').value, description: $('job_desc').value});
-  const d = await readJson(res);
-  if (!res.ok) return toast(errText(d), 'err');
+  const d = await readJson(res); if (!res.ok) return toast(errText(d), 'err');
   ['job_title', 'job_skills', 'job_desc'].forEach(i => $(i).value = ''); $('job_exp').value = 0;
-  await refresh(); $('p_job').value = d.id; toast('Job added ✅');
+  await refresh(); $('p_job').value = d.id; toast('Job created ✅');
 });
 const addCandidate = btn => busy(btn, async () => {
   const res = await jsonPost('/api/add-candidate/', {name: $('c_name').value, email: $('c_email').value, phone: $('c_phone').value, skills: $('c_skills').value, experience: $('c_exp').value, resume_text: $('c_resume').value});
-  const d = await readJson(res);
-  if (!res.ok) return toast(errText(d), 'err');
+  const d = await readJson(res); if (!res.ok) return toast(errText(d), 'err');
   ['c_name', 'c_email', 'c_phone', 'c_skills', 'c_resume'].forEach(i => $(i).value = ''); $('c_exp').value = 0; $('upmsg').textContent = ''; $('file').value = '';
   await refresh(); $('p_cand').value = d.id; toast(`Candidate added ✅ (${d.chunks} resume chunks)`);
 });
@@ -412,25 +521,20 @@ const runPipeline = btn => busy(btn, async () => {
   if (!$('p_cand').value || !$('p_job').value) return toast('Pick a candidate and a job first.', 'err');
   let k = 0; setSteps(0, 0); const timer = setInterval(() => { k = Math.min(k + 1, 3); setSteps(k, k); }, 900); $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
   const res = await jsonPost('/api/run-pipeline/', {candidate_id: $('p_cand').value, job_id: $('p_job').value});
-  clearInterval(timer);
-  const d = await readJson(res);
+  clearInterval(timer); const d = await readJson(res);
   if (!res.ok) { setSteps(0, -1); return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
   const ran = d.interview_slot ? 4 : 2; setSteps(ran, -1, ran);
-  $('p_result').innerHTML = `<div class="res"><div class="item" style="padding-top:0;align-items:center">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
+  $('p_result').innerHTML = `<div class="res"><div class="rw" style="padding:0 0 12px">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
     <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
     ${d.breakdown ? `<div style="margin-top:12px">${[['Skills', d.breakdown.skills], ['Experience', d.breakdown.experience], ['Education', d.breakdown.education]].map(([l, v]) => `<div class="fun" style="grid-template-columns:90px 1fr 34px"><span>${l}</span><div class="bar"><i style="width:${Math.min(100, v)}%"></i></div><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
-    ${(d.evidence || []).length ? `<div style="margin-top:12px"><b>Evidence from the resume</b>${d.evidence.map(e => `<small style="display:block;color:var(--muted);margin-top:6px">“${esc(e.quote)}” <span class="chip">${esc(e.section)}</span> ${esc(e.supports)}</small>`).join('')}</div>` : ''}
-    ${d.retrieval && d.retrieval !== 'semantic' ? `<small style="display:block;color:var(--muted);margin-top:10px">Scored without semantic search (${esc(d.retrieval)}).</small>` : ''}
+    ${(d.evidence || []).length ? `<div style="margin-top:12px"><b>Evidence from the resume</b>${d.evidence.map(e => `<small style="display:block;margin-top:6px">“${esc(e.quote)}” <span class="chip">${esc(e.section)}</span> ${esc(e.supports)}</small>`).join('')}</div>` : ''}
+    ${d.retrieval && d.retrieval !== 'semantic' ? `<small style="display:block;margin-top:10px">Scored without semantic search (${esc(d.retrieval)}).</small>` : ''}
     ${d.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}
     <p style="margin:12px 0 0"><b>Interview:</b> ${d.interview_slot ? esc(d.interview_slot.slot + ' via ' + d.interview_slot.platform) : 'Not scheduled (rejected)'}</p></div>`;
   await refresh(); loadLogs(); toast('Pipeline complete ✅');
 });
 
-// ---------- fit big screens ----------
-function fit() { const z = Math.min(3.5, Math.max(1, innerWidth / 1250)); document.documentElement.style.zoom = z > 1.05 ? z.toFixed(2) : ''; }
-addEventListener('resize', fit); fit();
-
-// ---------- start ----------
+// start
 function start() { const u = localStorage.getItem('username') || ''; $('who').textContent = u; $('av').textContent = ini(u); refresh(); loadLogs(); }
 window.onload = () => { show(location.hash.slice(1) || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };
 </script>
