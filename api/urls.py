@@ -2,8 +2,10 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import views
+from .health import healthz
 
 urlpatterns = [
+    path('healthz', healthz),
     path('', views.index),
 
     # auth
