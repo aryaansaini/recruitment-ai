@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Django system check
+        run: python manage.py check
+        env:
+          SECRET_KEY: ci-only-not-a-real-secret
+
+      - name: No missing migrations
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          SECRET_KEY: ci-only-not-a-real-secret
+
+      # Tests always use SQLite and mocked Gemini: no secrets, no network, no cost
+      - name: Run tests
+        run: python manage.py test
+        env:
+          SECRET_KEY: ci-only-not-a-real-secret
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t recruitment-ai .

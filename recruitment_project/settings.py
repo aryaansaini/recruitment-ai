@@ -16,9 +16,17 @@ if not SECRET_KEY:
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
+# Render sets RENDER_EXTERNAL_HOSTNAME (e.g. my-app.onrender.com) automatically
+RENDER_HOST = os.getenv('RENDER_EXTERNAL_HOSTNAME', '')
+
 ALLOWED_HOSTS = [
     h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()
-]
+] + ([RENDER_HOST] if RENDER_HOST else [])
+
+# Needed for /admin login over HTTPS behind Render's proxy
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+] + ([f'https://{RENDER_HOST}'] if RENDER_HOST else [])
 
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
@@ -49,6 +57,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',   # serves static files (admin CSS/JS) from gunicorn
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -86,6 +95,7 @@ DATABASES = {
     'default': dj_database_url.parse(
         DATABASE_URL or f'sqlite:///{BASE_DIR / "db.sqlite3"}',  # empty value -> SQLite
         conn_max_age=600,
+        conn_health_checks=True,     # Neon closes idle connections: re-check before reusing one
     )
 }
 # Neon's pooled endpoint (pgbouncer) does not support server-side cursors
@@ -110,6 +120,11 @@ USE_TZ = True
 
 # ---------- Static files ----------
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'      # filled by `collectstatic` during the Docker build
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -148,10 +163,16 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 
 # ---------- Production hardening (only when DEBUG is off) ----------
+# Render terminates HTTPS and tells Django via this header
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_SSL_REDIRECT = not RUNNING_TESTS          # http -> https (tests use plain http)
+    SECURE_REDIRECT_EXEMPT = [r'^healthz$']          # health checks must never be redirected
+    SECURE_HSTS_SECONDS = 3600                       # raise later once everything works
 
 
 # ---------- Logging ----------
