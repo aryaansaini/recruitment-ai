@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from . import auth_views
 from . import views
 from .health import healthz
 
@@ -22,4 +22,6 @@ urlpatterns = [
     path('api/logs/', views.get_logs),
     path('api/parse-resume/', views.parse_resume),
     path('api/search/', views.search),
+    path('api/auth/demo/', auth_views.demo_login),
+    path('api/auth/signup/', auth_views.signup),
 ]

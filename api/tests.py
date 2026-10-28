@@ -552,3 +552,24 @@ class ModelTests(BaseAPITest):
         Application.objects.create(candidate=c, job=make_job(title='A'))
         Application.objects.create(candidate=c, job=make_job(title='B'))
         self.assertEqual(c.applications.count(), 2)
+class DemoSignupTests(BaseAPITest):
+    def test_demo_login_gives_working_token(self):
+        r = self.client.post('/api/auth/demo/')
+        self.assertEqual(r.status_code, 200)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + r.data['access'])
+        self.assertEqual(self.client.get('/api/candidates/').status_code, 200)
+
+    def test_signup_then_duplicate_rejected(self):
+        body = {'username': 'newuser', 'password': 'Str0ngPass!234'}
+        self.assertEqual(self.client.post('/api/auth/signup/', body, format='json').status_code, 201)
+        self.assertEqual(self.client.post('/api/auth/signup/', body, format='json').status_code, 400)
+
+    def test_signup_weak_password_rejected(self):
+        r = self.client.post('/api/auth/signup/', {'username': 'abc', 'password': '123'}, format='json')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('password', r.data)
+
+    def test_cannot_register_demo_username(self):
+        r = self.client.post('/api/auth/signup/',
+                             {'username': 'demo_recruiter', 'password': 'Str0ngPass!234'}, format='json')
+        self.assertEqual(r.status_code, 400)
