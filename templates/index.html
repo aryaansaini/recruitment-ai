@@ -270,12 +270,17 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   <h2 id="login_title">Sign in to Recruit AI</h2>
   <label class="f">Username</label><input id="login_user" autocomplete="username">
   <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password">
+  <div id="signup_extra" style="display:none">
+    <label class="f">Phone number</label><input id="su_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210">
+    <div id="su_invite_wrap" style="display:none"><label class="f">Invite code</label><input id="su_invite" autocomplete="off"></div>
+    <div class="hint">Your phone number is stored with your account (it is not verified and not shown to anyone). Everything you add stays private to your account and you can delete it all at any time from the Dashboard.</div>
+  </div>
   <div id="login_error" role="alert"></div>
   <button class="btn full" id="login_btn" style="margin-top:6px" onclick="login()">Sign in</button>
   <div id="login_switch" class="hint" style="text-align:center"></div>
   <div style="display:flex;align-items:center;gap:10px;margin:16px 0 4px;color:var(--muted);font-size:12px"><hr style="flex:1;border:0;border-top:1px solid var(--line)">or<hr style="flex:1;border:0;border-top:1px solid var(--line)"></div>
   <button class="btn sec full" style="margin-top:8px" onclick="demoLogin(this)">🚀 Try Demo (no login needed)</button>
-  <div class="hint" style="text-align:center">Demo data is shared and public. Please don't upload real resumes.</div>
+  <div class="hint" style="text-align:center">The demo is a shared, read-only workspace with fictional data. To try your own resumes, create a free account.</div>
 </div></div></div>
 
 <header class="hdr" role="banner">
@@ -298,6 +303,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
 </div></div>
 
 <div class="wrap">
+  <div id="demo_banner" class="warnbox" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px"><span><b>You are in the shared demo (read-only, fictional data).</b> Create a free account to add your own jobs and resumes.</span><button class="btn s" onclick="leaveDemo()">Create account</button></div>
   <section class="view" id="v-overview">
     <div class="flash"><div><h2 id="hello"></h2><p id="hsub"></p></div>
       <div class="acts"><button class="btn s" onclick="show('candidates')">Add candidate</button><button class="btn s sec" onclick="show('pipeline')">Run pipeline</button></div></div>
@@ -308,6 +314,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
         <div class="box"><h2>Scheduled interviews</h2><div id="ov_int"></div></div>
       </div>
       <div class="box"><h2>Recent agent activity</h2><div id="ov_logs" class="tl"></div></div>
+      <div class="box" id="my_data_box" style="grid-column:1/-1"><h2>Your data</h2><div class="bd"><p class="hint" style="margin-top:0">Everything you add (jobs, candidates, resumes) is private to your account. You can delete all of it, together with your account, at any time.</p><button class="btn s sec" onclick="deleteAccount()">Delete my account and data</button></div></div>
     </div>
   </section>
 
@@ -399,9 +406,10 @@ function setAuthMode(m) {
   authMode = m;
   $('login_title').textContent = m === 'login' ? 'Sign in to Recruit AI' : 'Create your account';
   $('login_btn').textContent = m === 'login' ? 'Sign in' : 'Create account';
+  $('signup_extra').style.display = m === 'login' ? 'none' : 'block';
   $('login_pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
   $('login_switch').innerHTML = m === 'login'
-    ? 'New here? <a href="#" onclick="setAuthMode(\'signup\');return false">Create an account</a>'
+    ? (window.signupsOpen === false ? '' : 'New here? <a href="#" onclick="setAuthMode(\'signup\');return false">Create an account</a>')
     : 'Already have an account? <a href="#" onclick="setAuthMode(\'login\');return false">Sign in</a>';
   $('login_error').textContent = '';
 }
@@ -412,7 +420,7 @@ function saveSession(d, username) {
 async function login() {
   const username = $('login_user').value.trim(), password = $('login_pass').value;
   const url = authMode === 'signup' ? '/api/auth/signup/' : '/api/auth/login/';
-  const res = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password})});
+  const res = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(authMode === 'signup' ? {username, password, phone: $('su_phone').value.trim(), invite_code: $('su_invite').value.trim()} : {username, password})});
   const data = await readJson(res);
   if (!res.ok) {
     $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.'
@@ -421,6 +429,7 @@ async function login() {
   }
   saveSession(data, username);
 }
+fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
 const demoLogin = btn => busy(btn, async () => {
   const res = await fetch('/api/auth/demo/', {method: 'POST'});
   const data = await readJson(res);
@@ -479,13 +488,13 @@ function renderStats() {
 }
 function renderJobs() {
   $('jobs_list').innerHTML = !jobs.length ? empty('No jobs yet. Create your first job on the left.') :
-    jobs.map(j => `<div class="rw"><div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small>${chips(j.required_skills, 6)}</div><span class="lbl">${esc(j.min_experience)}+ yrs</span></div>`).join('');
+    jobs.map(j => `<div class="rw"><div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small>${chips(j.required_skills, 6)}</div><span class="lbl">${esc(j.min_experience)}+ yrs</span>${isDemo() ? '' : `<button class="btn s sec" style="min-height:28px;padding:0 8px" title="Delete" aria-label="Delete" onclick="delJob(${esc(j.id)})">🗑</button>`}</div>`).join('');
 }
 function renderCands() {
   const q = $('q').value.toLowerCase(), sf = $('sf').value;
   const rows = cands.filter(c => (!sf || c.status === sf) && (!q || (c.name + ' ' + c.skills).toLowerCase().includes(q)));
   $('cands_list').innerHTML = !rows.length ? empty(cands.length ? 'No candidate matches this filter.' : 'No candidates yet. Upload a resume to start.') :
-    rows.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.experience)} yrs</small>${chips(c.skills)}</div>${c.score > 0 ? ring(c.score) : ''}${badge(c.status)}</div>`).join('');
+    rows.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.experience)} yrs</small>${chips(c.skills)}</div>${c.score > 0 ? ring(c.score) : ''}${badge(c.status)}${isDemo() ? '' : `<button class="btn s sec" style="min-height:28px;padding:0 8px" title="Delete" aria-label="Delete" onclick="delCandidate(${esc(c.id)})">🗑</button>`}</div>`).join('');
 }
 function renderSelects() {
   const keep = [$('p_cand').value, $('p_job').value];
@@ -565,8 +574,36 @@ const runPipeline = btn => busy(btn, async () => {
   await refresh(); loadLogs(); toast('Pipeline complete ✅');
 });
 
+// demo / delete / account
+const isDemo = () => localStorage.getItem('username') === 'demo_recruiter';
+function leaveDemo() { logout(); setAuthMode('signup'); $('login_error').textContent = ''; }
+async function delCandidate(id) {
+  if (!confirm('Delete this candidate and their resume data?')) return;
+  const r = await api('/api/candidates/' + id + '/', {method: 'DELETE'});
+  if (!r.ok) return toast(errText(await readJson(r)), 'err');
+  await refresh(); toast('Candidate deleted');
+}
+async function delJob(id) {
+  if (!confirm('Delete this job?')) return;
+  const r = await api('/api/jobs/' + id + '/', {method: 'DELETE'});
+  if (!r.ok) return toast(errText(await readJson(r)), 'err');
+  await refresh(); toast('Job deleted');
+}
+async function deleteAccount() {
+  const pw = prompt('This permanently deletes your account, jobs, candidates and resumes.\nType your password to confirm:');
+  if (!pw) return;
+  const r = await api('/api/auth/me/', {method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw})});
+  if (!r.ok) return toast(errText(await readJson(r)), 'err');
+  logout(); $('login_error').textContent = 'Your account and all your data were deleted.';
+}
+
 // start
-function start() { const u = localStorage.getItem('username') || ''; $('who').textContent = u; $('av').textContent = ini(u); refresh(); loadLogs(); }
+function start() {
+  const u = localStorage.getItem('username') || '';
+  $('who').textContent = u; $('av').textContent = ini(u);
+  $('demo_banner').style.display = isDemo() ? 'flex' : 'none'; $('my_data_box').style.display = isDemo() ? 'none' : '';
+  refresh(); loadLogs();
+}
 window.onload = () => { show(location.hash.slice(1) || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };
 </script>
 </body>

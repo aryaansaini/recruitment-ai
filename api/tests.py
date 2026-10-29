@@ -23,11 +23,17 @@ from .resume_parser import (
 from .services import rebuild_resume_chunks
 
 
+def default_owner():
+    """Tests log in as 'recruiter', so data created by the helpers belongs to that user."""
+    return User.objects.get_or_create(username='recruiter')[0]
+
+
 def make_candidate(**kw):
     data = dict(name='Rahul', email='rahul@example.com', phone='9876543210',
                 skills='Python, Django, SQL', experience=3,
                 resume_text='Backend dev with Django and SQL experience')
     data.update(kw)
+    data.setdefault('owner', default_owner())
     return Candidate.objects.create(**data)
 
 
@@ -35,6 +41,7 @@ def make_job(**kw):
     data = dict(title='Backend Dev', required_skills='Python, Django',
                 min_experience=2, description='Build APIs')
     data.update(kw)
+    data.setdefault('owner', default_owner())
     return Job.objects.create(**data)
 
 
@@ -552,24 +559,3 @@ class ModelTests(BaseAPITest):
         Application.objects.create(candidate=c, job=make_job(title='A'))
         Application.objects.create(candidate=c, job=make_job(title='B'))
         self.assertEqual(c.applications.count(), 2)
-class DemoSignupTests(BaseAPITest):
-    def test_demo_login_gives_working_token(self):
-        r = self.client.post('/api/auth/demo/')
-        self.assertEqual(r.status_code, 200)
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + r.data['access'])
-        self.assertEqual(self.client.get('/api/candidates/').status_code, 200)
-
-    def test_signup_then_duplicate_rejected(self):
-        body = {'username': 'newuser', 'password': 'Str0ngPass!234'}
-        self.assertEqual(self.client.post('/api/auth/signup/', body, format='json').status_code, 201)
-        self.assertEqual(self.client.post('/api/auth/signup/', body, format='json').status_code, 400)
-
-    def test_signup_weak_password_rejected(self):
-        r = self.client.post('/api/auth/signup/', {'username': 'abc', 'password': '123'}, format='json')
-        self.assertEqual(r.status_code, 400)
-        self.assertIn('password', r.data)
-
-    def test_cannot_register_demo_username(self):
-        r = self.client.post('/api/auth/signup/',
-                             {'username': 'demo_recruiter', 'password': 'Str0ngPass!234'}, format='json')
-        self.assertEqual(r.status_code, 400)

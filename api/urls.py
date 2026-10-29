@@ -12,13 +12,16 @@ urlpatterns = [
     path('api/auth/login/', views.LoginView.as_view()),
     path('api/auth/refresh/', TokenRefreshView.as_view()),
     path('api/auth/me/', views.me),
+    path('api/auth/config/', auth_views.auth_config),
 
     # data
     path('api/add-candidate/', views.add_candidate),
     path('api/add-job/', views.add_job),
     path('api/run-pipeline/', views.run_pipeline),
     path('api/candidates/', views.get_candidates),
+    path('api/candidates/<int:pk>/', views.delete_candidate),
     path('api/jobs/', views.get_jobs),
+    path('api/jobs/<int:pk>/', views.delete_job),
     path('api/logs/', views.get_logs),
     path('api/parse-resume/', views.parse_resume),
     path('api/search/', views.search),

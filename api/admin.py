@@ -1,17 +1,17 @@
 from django.contrib import admin
-from .models import Candidate, Job, Application, AgentLog, ResumeChunk
+from .models import Candidate, Job, Application, AgentLog, ResumeChunk, RecruiterProfile
 
 
 @admin.register(Candidate)
 class CandidateAdmin(admin.ModelAdmin):
-    list_display = ('name', 'email', 'experience', 'score', 'status', 'created_at')
-    list_filter = ('status',)
+    list_display = ('name', 'email', 'owner', 'experience', 'score', 'status', 'created_at')
+    list_filter = ('status', 'owner')
     search_fields = ('name', 'email', 'skills')
 
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'min_experience', 'created_at')
+    list_display = ('title', 'owner', 'min_experience', 'created_at')
     search_fields = ('title', 'required_skills')
 
 
@@ -37,3 +37,9 @@ class ResumeChunkAdmin(admin.ModelAdmin):
     @admin.display(boolean=True, description='Embedded')
     def embedded(self, obj):
         return obj.embedding is not None
+
+
+@admin.register(RecruiterProfile)
+class RecruiterProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'phone', 'created_at')
+    search_fields = ('user__username', 'phone')

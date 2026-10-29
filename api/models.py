@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from pgvector.django import VectorField
 
@@ -19,6 +20,9 @@ class Candidate(models.Model):
     score = models.FloatField(default=0)
     status = models.CharField(max_length=50, choices=Status.choices, default=Status.PENDING)
     interview_date = models.DateTimeField(null=True, blank=True)
+    # Every candidate belongs to ONE recruiter; nobody else can see it (deleting the user deletes it)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                              on_delete=models.CASCADE, related_name='candidates')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -30,6 +34,8 @@ class Job(models.Model):
     required_skills = models.TextField()    # e.g. Python, Django, SQL
     min_experience = models.IntegerField()
     description = models.TextField()
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                              on_delete=models.CASCADE, related_name='jobs')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -103,3 +109,13 @@ class ResumeChunk(models.Model):
         
     def __str__(self):
         return f'{self.candidate} [{self.section} #{self.chunk_index}]'
+
+
+class RecruiterProfile(models.Model):
+    """Extra details collected at sign-up. The phone number is NOT verified (no SMS check)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=16, unique=True)    # normalised, e.g. +919876543210
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.user} ({self.phone})'

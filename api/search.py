@@ -1,4 +1,3 @@
-
 import math
 from collections import OrderedDict
 
@@ -16,10 +15,12 @@ def _cosine(a, b):
     return dot / (na * nb) if na and nb else 0.0
 
 
-def search_chunks(query, limit=20):
+def search_chunks(query, limit=20, owner=None):
     """Return [(chunk, similarity 0..1)] best first. Raises EmbeddingError."""
     qvec = embed_texts([query], task_type='RETRIEVAL_QUERY')[0]
     chunks = ResumeChunk.objects.filter(embedding__isnull=False).select_related('candidate')
+    if owner is not None:                        # a recruiter only ever searches their own candidates
+        chunks = chunks.filter(candidate__owner=owner)
 
     if connection.vendor == 'postgresql':
         rows = chunks.annotate(distance=CosineDistance('embedding', qvec)).order_by('distance')[:limit]
@@ -30,9 +31,9 @@ def search_chunks(query, limit=20):
     return scored[:limit]
 
 
-def search_candidates(query, limit=5, evidence_per_candidate=2):
+def search_candidates(query, limit=5, evidence_per_candidate=2, owner=None):
     """Best matching candidates for a free-text query, each with the resume lines that matched."""
-    hits = search_chunks(query, limit=min(60, limit * 8))
+    hits = search_chunks(query, limit=min(60, limit * 8), owner=owner)
     grouped = OrderedDict()
     for chunk, sim in hits:                          # hits are sorted: first chunk = best chunk
         entry = grouped.setdefault(chunk.candidate_id, {

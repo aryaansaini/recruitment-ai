@@ -41,6 +41,13 @@ if GEMINI_API_KEY:
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'gemini-embedding-001')
 EMBEDDING_DIM = 768   # must match ResumeChunk.embedding dimensions (changing it needs a migration)
 
+# ---------- Sign-ups and per-user limits ----------
+SIGNUPS_ENABLED = os.getenv('SIGNUPS_ENABLED', 'True') == 'True'      # False = nobody can register
+SIGNUP_INVITE_CODE = os.getenv('SIGNUP_INVITE_CODE', '')              # set it to make sign-up invite-only
+MAX_SIGNUPS_PER_DAY = int(os.getenv('MAX_SIGNUPS_PER_DAY', '30'))     # all new accounts together, per 24 h
+MAX_CANDIDATES_PER_USER = int(os.getenv('MAX_CANDIDATES_PER_USER', '20'))   # staff accounts are exempt
+MAX_JOBS_PER_USER = int(os.getenv('MAX_JOBS_PER_USER', '5'))
+
 # ---------- Application definition ----------
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -138,6 +145,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    # Number of proxies in front of Django (Render = 1) so per-IP limits use the real client address
+    'NUM_PROXIES': int(os.getenv('NUM_PROXIES', '1')),
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
@@ -148,6 +157,8 @@ REST_FRAMEWORK = {
         'login': '10/min',      # brute-force protection
         'pipeline': '10/min',   # each run calls Gemini
         'search': '30/min',     # each search calls the embedding API
+        'pipeline_day': '30/day',
+        'search_day': '200/day',
     },
 }
 
