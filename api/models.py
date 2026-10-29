@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from pgvector.django import VectorField
+from django.utils import timezone
 
 class Candidate(models.Model):
     class Status(models.TextChoices):
@@ -114,8 +115,17 @@ class ResumeChunk(models.Model):
 class RecruiterProfile(models.Model):
     """Extra details collected at sign-up. The phone number is NOT verified (no SMS check)."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
-    phone = models.CharField(max_length=16, unique=True)    # normalised, e.g. +919876543210
+    phone = models.CharField(max_length=16, unique=True, null=True, blank=True)  # old field, no longer collected
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.user} ({self.phone})'
+
+    
+class EmailOTP(models.Model):
+    """Pending email verification for a new sign-up. The code is stored hashed, never in plain text."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_otp')
+    code_hash = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_sent_at = models.DateTimeField(default=timezone.now)

@@ -268,19 +268,24 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
 
 <div id="login_overlay"><div class="login-showcase"><div class="showcase-inner"><div class="showcase-kicker">RECRUIT AI · INTELLIGENT HIRING</div><h1>Build your dream team.<br><span>Powered by AI.</span></h1><p>Manage jobs, discover great candidates and streamline every step of your hiring process from one beautiful workspace.</p><div class="showcase-features"><div>✦ &nbsp; AI-powered candidate matching</div><div>✦ &nbsp; Smart resume screening</div><div>✦ &nbsp; Automated interview pipeline</div></div><div class="showcase-footer">RECRUIT AI / WORKSPACE</div></div></div><div class="login-form-side"><div class="lg"><svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><defs><linearGradient id="brandGradient" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#a371f7"/></linearGradient></defs><rect x="2" y="2" width="44" height="44" rx="13" fill="url(#brandGradient)"/><path d="M13 33V15h11c7 0 11 4 11 9s-4 9-11 9H13Zm8-12v6h4c3 0 4-1 4-3s-1-3-4-3h-4Z" fill="#fff"/><circle cx="36" cy="12" r="4" fill="#3fb950" stroke="#161b22" stroke-width="2"/></svg></div><div id="login_box">
   <h2 id="login_title">Sign in to Recruit AI</h2>
-  <label class="f">Username</label><input id="login_user" autocomplete="username">
-  <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password">
+  <div id="cred_fields"><label class="f">Username</label><input id="login_user" autocomplete="username">
+  <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password"></div>
   <div id="signup_extra" style="display:none">
-    <label class="f">Phone number</label><input id="su_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210">
+    <label class="f">Email</label><input id="su_email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
     <div id="su_invite_wrap" style="display:none"><label class="f">Invite code</label><input id="su_invite" autocomplete="off"></div>
-    <div class="hint">Your phone number is stored with your account (it is not verified and not shown to anyone). Everything you add stays private to your account and you can delete it all at any time from the Dashboard.</div>
+    <div class="hint">We will email you a 6-digit code to verify this address. Everything you add stays private to your account and you can delete it at any time from My Profile.</div>
+  </div>
+  <div id="otp_box" style="display:none">
+    <div class="hint" id="otp_info" style="margin:0 0 8px"></div>
+    <label class="f">6-digit code</label><input id="otp_code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456">
+    <button class="btn sec full" id="otp_resend" style="margin-top:10px" onclick="resendOtp()">Resend code</button>
   </div>
   <div id="login_error" role="alert"></div>
   <button class="btn full" id="login_btn" style="margin-top:6px" onclick="login()">Sign in</button>
   <div id="login_switch" class="hint" style="text-align:center"></div>
   <div style="display:flex;align-items:center;gap:10px;margin:16px 0 4px;color:var(--muted);font-size:12px"><hr style="flex:1;border:0;border-top:1px solid var(--line)">or<hr style="flex:1;border:0;border-top:1px solid var(--line)"></div>
   <button class="btn sec full" style="margin-top:8px" onclick="demoLogin(this)">🚀 Try Demo (no login needed)</button>
-  <div class="hint" style="text-align:center">The demo is a shared, read-only workspace with fictional data. To try your own resumes, create a free account.</div>
+  <div class="hint" style="text-align:center">The demo gives you full access with sample data. Anything you add is deleted automatically when you sign out or close the page. To keep your data, create a free account.</div>
 </div></div></div>
 
 <header class="hdr" role="banner">
@@ -295,6 +300,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   <h1><span id="title">Dashboard</span><small>Recruiter</small></h1><p id="sub"></p>
   <nav class="nav" id="tabs">
     <button class="tab" data-t="overview"><span class="i">◫</span>Dashboard</button>
+    <button class="tab" data-t="profile"><span class="i">☺</span>My Profile</button>
     <button class="tab" data-t="jobs"><span class="i">▤</span>Jobs<span class="cnt" id="n_jobs">0</span></button>
     <button class="tab" data-t="candidates"><span class="i">♙</span>Candidates<span class="cnt" id="n_cands">0</span></button>
     <button class="tab" data-t="pipeline"><span class="i">✧</span>Pipeline</button>
@@ -303,7 +309,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
 </div></div>
 
 <div class="wrap">
-  <div id="demo_banner" class="warnbox" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px"><span><b>You are in the shared demo (read-only, fictional data).</b> Create a free account to add your own jobs and resumes.</span><button class="btn s" onclick="leaveDemo()">Create account</button></div>
+  <div id="demo_banner" class="warnbox" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px"><span><b>You are in a temporary demo.</b> Everything you add is deleted when you sign out or close this page. Create a free account to keep your data.</span><button class="btn s" onclick="leaveDemo()">Create account</button></div>
   <section class="view" id="v-overview">
     <div class="flash"><div><h2 id="hello"></h2><p id="hsub"></p></div>
       <div class="acts"><button class="btn s" onclick="show('candidates')">Add candidate</button><button class="btn s sec" onclick="show('pipeline')">Run pipeline</button></div></div>
@@ -314,7 +320,15 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
         <div class="box"><h2>Scheduled interviews</h2><div id="ov_int"></div></div>
       </div>
       <div class="box"><h2>Recent agent activity</h2><div id="ov_logs" class="tl"></div></div>
-      <div class="box" id="my_data_box" style="grid-column:1/-1"><h2>Your data</h2><div class="bd"><p class="hint" style="margin-top:0">Everything you add (jobs, candidates, resumes) is private to your account. You can delete all of it, together with your account, at any time.</p><button class="btn s sec" onclick="deleteAccount()">Delete my account and data</button></div></div>
+      
+    </div>
+  </section>
+
+  <section class="view" id="v-profile">
+    <div class="grid stats" id="pf_stats"></div>
+    <div class="grid even">
+      <div class="box"><h2>Account</h2><div class="bd"><div class="rw" id="pf_box" style="padding:0 0 14px"></div><button class="btn s sec" onclick="logout()">Sign out</button></div></div>
+      <div class="box"><h2>Your data</h2><div class="bd" id="pf_data"></div></div>
     </div>
   </section>
 
@@ -388,7 +402,7 @@ const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w
 const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
 const ring = (s, big) => { const v = Math.max(0, Math.min(100, Number(s) || 0)); return `<div class="ring${big ? ' big' : ''}" style="--p:${v};--rc:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)'}"><b>${Math.round(v)}</b></div>`; };
 
-const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score']};
+const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score'], profile: ['My Profile', 'Your account and your data']};
 
 function toast(msg, type = 'ok') { const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500); }
 async function busy(btn, fn) { const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…'; try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; } }
@@ -401,33 +415,61 @@ setTheme((() => { try { return localStorage.getItem('theme'); } catch (e) { retu
 // auth (JWT)
 const showLogin = m => { $('login_overlay').style.display = 'flex'; setAuthMode('login'); $('login_error').textContent = m || ''; };
 
-let authMode = 'login';
+let authMode = 'login', pendingUser = '', resendTimer = null;
 function setAuthMode(m) {
   authMode = m;
-  $('login_title').textContent = m === 'login' ? 'Sign in to Recruit AI' : 'Create your account';
-  $('login_btn').textContent = m === 'login' ? 'Sign in' : 'Create account';
-  $('signup_extra').style.display = m === 'login' ? 'none' : 'block';
+  $('cred_fields').style.display = m === 'otp' ? 'none' : '';
+  $('signup_extra').style.display = m === 'signup' ? 'block' : 'none';
+  $('otp_box').style.display = m === 'otp' ? 'block' : 'none';
+  $('login_title').textContent = m === 'login' ? 'Sign in to Recruit AI' : m === 'signup' ? 'Create your account' : 'Verify your email';
+  $('login_btn').textContent = m === 'login' ? 'Sign in' : m === 'signup' ? 'Send verification code' : 'Verify and continue';
   $('login_pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
   $('login_switch').innerHTML = m === 'login'
     ? (window.signupsOpen === false ? '' : 'New here? <a href="#" onclick="setAuthMode(\'signup\');return false">Create an account</a>')
-    : 'Already have an account? <a href="#" onclick="setAuthMode(\'login\');return false">Sign in</a>';
+    : m === 'signup' ? 'Already have an account? <a href="#" onclick="setAuthMode(\'login\');return false">Sign in</a>'
+    : '<a href="#" onclick="setAuthMode(\'signup\');return false">Use a different email</a>';
   $('login_error').textContent = '';
+}
+function startCooldown(sec) {
+  clearInterval(resendTimer); const b = $('otp_resend'); let n = sec;
+  const tick = () => { b.disabled = n > 0; b.textContent = n > 0 ? `Resend code (${n}s)` : 'Resend code'; n--; if (n < 0) clearInterval(resendTimer); };
+  tick(); resendTimer = setInterval(tick, 1000);
 }
 function saveSession(d, username) {
   localStorage.setItem('access', d.access); localStorage.setItem('refresh', d.refresh); localStorage.setItem('username', username);
-  $('login_pass').value = ''; $('login_overlay').style.display = 'none'; start();
+  $('login_pass').value = ''; $('otp_code').value = ''; $('login_overlay').style.display = 'none'; start();
 }
 async function login() {
+  if (authMode === 'otp') return verifyOtp();
   const username = $('login_user').value.trim(), password = $('login_pass').value;
-  const url = authMode === 'signup' ? '/api/auth/signup/' : '/api/auth/login/';
-  const res = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(authMode === 'signup' ? {username, password, phone: $('su_phone').value.trim(), invite_code: $('su_invite').value.trim()} : {username, password})});
+  if (authMode === 'signup') {
+    const res = await fetch('/api/auth/signup/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password, email: $('su_email').value.trim(), invite_code: $('su_invite').value.trim()})});
+    const data = await readJson(res);
+    if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
+    pendingUser = username; setAuthMode('otp');
+    $('otp_info').textContent = 'We sent a 6-digit code to ' + data.email + '. It expires in 10 minutes. Please also check your spam folder.';
+    startCooldown(60); $('otp_code').focus(); return;
+  }
+  const res = await fetch('/api/auth/login/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password})});
   const data = await readJson(res);
   if (!res.ok) {
     $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.'
-      : res.status === 401 ? 'Wrong username or password.' : errText(data);
+      : res.status === 401 ? 'Wrong username or password (or your email is not verified yet).' : errText(data);
     return;
   }
   saveSession(data, username);
+}
+async function verifyOtp() {
+  const res = await fetch('/api/auth/verify-otp/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: pendingUser, code: $('otp_code').value.trim()})});
+  const data = await readJson(res);
+  if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
+  saveSession(data, pendingUser);
+}
+async function resendOtp() {
+  const res = await fetch('/api/auth/resend-otp/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: pendingUser})});
+  const data = await readJson(res);
+  if (!res.ok) { $('login_error').textContent = errText(data); return; }
+  $('login_error').textContent = ''; toast('A new code was sent.'); startCooldown(60);
 }
 fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
 const demoLogin = btn => busy(btn, async () => {
@@ -437,7 +479,7 @@ const demoLogin = btn => busy(btn, async () => {
   saveSession(data, data.username);
 });
 
-function logout() { ['access', 'refresh', 'username'].forEach(k => localStorage.removeItem(k)); $('who').textContent = ''; showLogin('You have been signed out.'); }
+async function logout() { if (isDemo()) { try { await api('/api/auth/demo/end/', {method: 'POST'}, false); } catch (e) {} } ['access', 'refresh', 'username'].forEach(k => localStorage.removeItem(k)); $('who').textContent = ''; showLogin('You have been signed out.'); }
 async function refreshAccess() {
   const refresh = localStorage.getItem('refresh'); if (!refresh) return false;
   const res = await fetch('/api/auth/refresh/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({refresh})});
@@ -468,7 +510,7 @@ $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); i
 let jobs = [], cands = [];
 const load = async url => { const r = await api(url); return r.ok ? r.json() : []; };
 async function refresh() { const [j, c] = await Promise.all([load('/api/jobs/'), load('/api/candidates/')]); jobs = j; cands = c; renderAll(); }
-function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); $('n_jobs').textContent = jobs.length; $('n_cands').textContent = cands.length; }
+function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); renderProfile(); $('n_jobs').textContent = jobs.length; $('n_cands').textContent = cands.length; }
 
 function renderHero() {
   const h = new Date().getHours(), u = localStorage.getItem('username') || '';
@@ -484,7 +526,7 @@ function renderFunnel() {
 function renderStats() {
   const n = f => cands.filter(f).length;
   const cards = [['💼', 'Jobs', jobs.length], ['👥', 'Candidates', cands.length], ['✅', 'Shortlisted', n(c => ['shortlisted', 'matched', 'ranked'].includes(c.status))], ['📅', 'Interviews', n(c => c.status === 'interview_scheduled')], ['⛔', 'Rejected', n(c => c.status === 'rejected')]];
-  $('stats').innerHTML = cards.map(([i, l, v]) => `<div class="box stat"><div class="ic">${i}</div><div><b>${v}</b><span>${l}</span></div></div>`).join('');
+  $('pf_stats').innerHTML = $('stats').innerHTML = cards.map(([i, l, v]) => `<div class="box stat"><div class="ic">${i}</div><div><b>${v}</b><span>${l}</span></div></div>`).join('');
 }
 function renderJobs() {
   $('jobs_list').innerHTML = !jobs.length ? empty('No jobs yet. Create your first job on the left.') :
@@ -575,8 +617,8 @@ const runPipeline = btn => busy(btn, async () => {
 });
 
 // demo / delete / account
-const isDemo = () => localStorage.getItem('username') === 'demo_recruiter';
-function leaveDemo() { logout(); setAuthMode('signup'); $('login_error').textContent = ''; }
+const isDemo = () => (localStorage.getItem('username') || '').startsWith('demo_');
+async function leaveDemo() { await logout(); setAuthMode('signup'); $('login_error').textContent = ''; }
 async function delCandidate(id) {
   if (!confirm('Delete this candidate and their resume data?')) return;
   const r = await api('/api/candidates/' + id + '/', {method: 'DELETE'});
@@ -597,11 +639,35 @@ async function deleteAccount() {
   logout(); $('login_error').textContent = 'Your account and all your data were deleted.';
 }
 
+// profile
+let me = null;
+async function loadProfile() { const r = await api('/api/auth/profile/'); if (r.ok) { me = await readJson(r); renderProfile(); } }
+function renderProfile() {
+  if (!$('pf_box')) return;
+  const u = (me && me.username) || localStorage.getItem('username') || '', demo = isDemo();
+  $('pf_box').innerHTML = `<span class="av" style="width:56px;height:56px;font-size:20px">${demo ? 'D' : ini(u)}</span><div class="t"><b style="font-size:18px">${esc(demo ? 'Demo visitor' : u)}</b>${demo ? '<small>Temporary workspace</small>' : `<small>${esc((me && me.email) || '')} <span class="lbl" style="color:var(--ok);border-color:var(--ok)">verified</span></small><small>Member since ${me && me.date_joined ? when(me.date_joined).slice(0, 10) : '-'}</small>`}</div>`;
+  $('pf_data').innerHTML = demo
+    ? `<p class="hint" style="margin-top:0">This is a temporary demo workspace. Everything you add here is deleted automatically when you sign out or close this page. To keep your data, create a free account.</p><button class="btn s" onclick="leaveDemo()">Create account</button>`
+    : `<p class="hint" style="margin-top:0">Everything you add (jobs, candidates, resumes) is private to your account. You can delete it at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn s sec" onclick="clearData()">Delete all my jobs and candidates</button><button class="btn s sec" onclick="deleteAccount()">Delete my account and data</button></div>`;
+}
+async function clearData() {
+  if (!confirm('Delete ALL your jobs, candidates and resumes? Your account stays.')) return;
+  const r = await api('/api/auth/clear-data/', {method: 'POST'});
+  if (!r.ok) return toast(errText(await readJson(r)), 'err');
+  await refresh(); loadLogs(); toast('All your jobs and candidates were deleted');
+}
+// a demo workspace is removed as soon as the page is closed (server also removes old ones after 2 hours)
+window.addEventListener('pagehide', () => {
+  if (!isDemo()) return;
+  const t = localStorage.getItem('access');
+  if (t) fetch('/api/auth/demo/end/', {method: 'POST', keepalive: true, headers: {Authorization: 'Bearer ' + t}});
+});
+
 // start
 function start() {
   const u = localStorage.getItem('username') || '';
   $('who').textContent = u; $('av').textContent = ini(u);
-  $('demo_banner').style.display = isDemo() ? 'flex' : 'none'; $('my_data_box').style.display = isDemo() ? 'none' : '';
+  $('demo_banner').style.display = isDemo() ? 'flex' : 'none'; loadProfile();
   refresh(); loadLogs();
 }
 window.onload = () => { show(location.hash.slice(1) || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };

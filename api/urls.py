@@ -27,4 +27,9 @@ urlpatterns = [
     path('api/search/', views.search),
     path('api/auth/demo/', auth_views.demo_login),
     path('api/auth/signup/', auth_views.signup),
+    path('api/auth/verify-otp/', auth_views.verify_otp),
+    path('api/auth/resend-otp/', auth_views.resend_otp),
+    path('api/auth/profile/', auth_views.profile),
+    path('api/auth/clear-data/', auth_views.clear_data),
+    path('api/auth/demo/end/', auth_views.demo_end),
 ]
