@@ -9,9 +9,20 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)
 ![DRF](https://img.shields.io/badge/Django%20REST%20Framework-API-A30000)
+![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white)
 ![Postgres](https://img.shields.io/badge/Neon%20Postgres-pgvector-336791?logo=postgresql&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google-Gemini-4285F4?logo=google&logoColor=white)
+![ADK](https://img.shields.io/badge/Google-ADK-4285F4?logo=google&logoColor=white)
+![RAG](https://img.shields.io/badge/RAG-verified%20evidence-8A2BE2)
+![Multi-agent](https://img.shields.io/badge/Multi--agent-4%20agents-0A7EA4)
+![Semantic search](https://img.shields.io/badge/Semantic%20search-pgvector%20HNSW-336791)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=black)
 
+<!-- Add this badge only after the MCP servers are built (roadmap):
+![MCP](https://img.shields.io/badge/MCP-servers-000000)
+-->
 
 ---
 
@@ -77,7 +88,6 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 **Pipeline run.** Four agents screen, match, rank and schedule a candidate. The result shows the score breakdown and the quotes taken from the resume.
 
 ![Pipeline result](docs/pipeline-result.png)
-![Rejected candidate](docs/pipeline-rejected.png)
 
 **Semantic search.** Find candidates by meaning and see the matching resume passages.
 
