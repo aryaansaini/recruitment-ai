@@ -60,6 +60,11 @@ def _otp_ttl():
     return timedelta(minutes=getattr(settings, 'OTP_TTL_MINUTES', 10))
 
 
+def _otp_required():
+    """Email OTP is optional for now. Turn it on with EMAIL_OTP_REQUIRED=True (env var)."""
+    return bool(getattr(settings, 'EMAIL_OTP_REQUIRED', False))
+
+
 def _otp_cooldown():
     return int(getattr(settings, 'OTP_RESEND_SECONDS', 60))
 
@@ -141,7 +146,8 @@ class EmailSignupSerializer(serializers.Serializer):
 @permission_classes([AllowAny])
 @throttle_classes([SignupThrottle])
 def signup(request):
-    """Step 1: create an INACTIVE account and email a 6-digit code. No tokens yet."""
+    """OTP on: create an INACTIVE account and email a 6-digit code (no tokens yet).
+    OTP off (default): create the account and log the user in right away."""
     if not settings.SIGNUPS_ENABLED:
         return Response({'detail': 'Sign-ups are closed right now.'}, status=403)
 
@@ -160,16 +166,20 @@ def signup(request):
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
 
+    otp_required = _otp_required()
     try:
         with transaction.atomic():
             # an older, never-verified attempt with the same username/email is replaced
             User.objects.filter(is_active=False, is_staff=False, email_otp__isnull=False).filter(
                 Q(username__iexact=data['username']) | Q(email__iexact=data['email'])).delete()
             user = User.objects.create_user(username=data['username'], email=data['email'],
-                                            password=data['password'], is_active=False)
+                                            password=data['password'], is_active=not otp_required)
             RecruiterProfile.objects.create(user=user)
     except IntegrityError:
         return Response({'detail': 'This username is already taken.'}, status=400)
+
+    if not otp_required:
+        return Response({**_tokens(user), 'email': _mask(data['email'])}, status=201)
 
     try:
         _issue_otp(user)
@@ -242,6 +252,7 @@ def auth_config(request):
     return Response({
         'signups_enabled': settings.SIGNUPS_ENABLED,
         'invite_required': bool(settings.SIGNUP_INVITE_CODE),
+        'email_otp_required': _otp_required(),
     })
 
 

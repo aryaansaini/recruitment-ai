@@ -273,7 +273,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   <div id="signup_extra" style="display:none">
     <label class="f">Email</label><input id="su_email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
     <div id="su_invite_wrap" style="display:none"><label class="f">Invite code</label><input id="su_invite" autocomplete="off"></div>
-    <div class="hint">We will email you a 6-digit code to verify this address. Everything you add stays private to your account and you can delete it at any time from My Profile.</div>
+    <div class="hint">Everything you add stays private to your account and you can delete it at any time from My Profile.</div>
   </div>
   <div id="otp_box" style="display:none">
     <div class="hint" id="otp_info" style="margin:0 0 8px"></div>
@@ -422,7 +422,7 @@ function setAuthMode(m) {
   $('signup_extra').style.display = m === 'signup' ? 'block' : 'none';
   $('otp_box').style.display = m === 'otp' ? 'block' : 'none';
   $('login_title').textContent = m === 'login' ? 'Sign in to Recruit AI' : m === 'signup' ? 'Create your account' : 'Verify your email';
-  $('login_btn').textContent = m === 'login' ? 'Sign in' : m === 'signup' ? 'Send verification code' : 'Verify and continue';
+  $('login_btn').textContent = m === 'login' ? 'Sign in' : m === 'signup' ? (window.otpRequired ? 'Send verification code' : 'Create account') : 'Verify and continue';
   $('login_pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
   $('login_switch').innerHTML = m === 'login'
     ? (window.signupsOpen === false ? '' : 'New here? <a href="#" onclick="setAuthMode(\'signup\');return false">Create an account</a>')
@@ -446,6 +446,7 @@ async function login() {
     const res = await fetch('/api/auth/signup/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password, email: $('su_email').value.trim(), invite_code: $('su_invite').value.trim()})});
     const data = await readJson(res);
     if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
+    if (data.access) { saveSession(data, username); return; }
     pendingUser = username; setAuthMode('otp');
     $('otp_info').textContent = 'We sent a 6-digit code to ' + data.email + '. It expires in 10 minutes. Please also check your spam folder.';
     startCooldown(60); $('otp_code').focus(); return;
@@ -471,7 +472,7 @@ async function resendOtp() {
   if (!res.ok) { $('login_error').textContent = errText(data); return; }
   $('login_error').textContent = ''; toast('A new code was sent.'); startCooldown(60);
 }
-fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
+fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; window.otpRequired = c.email_otp_required; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
 const demoLogin = btn => busy(btn, async () => {
   const res = await fetch('/api/auth/demo/', {method: 'POST'});
   const data = await readJson(res);
@@ -645,7 +646,7 @@ async function loadProfile() { const r = await api('/api/auth/profile/'); if (r.
 function renderProfile() {
   if (!$('pf_box')) return;
   const u = (me && me.username) || localStorage.getItem('username') || '', demo = isDemo();
-  $('pf_box').innerHTML = `<span class="av" style="width:56px;height:56px;font-size:20px">${demo ? 'D' : ini(u)}</span><div class="t"><b style="font-size:18px">${esc(demo ? 'Demo visitor' : u)}</b>${demo ? '<small>Temporary workspace</small>' : `<small>${esc((me && me.email) || '')} <span class="lbl" style="color:var(--ok);border-color:var(--ok)">verified</span></small><small>Member since ${me && me.date_joined ? when(me.date_joined).slice(0, 10) : '-'}</small>`}</div>`;
+  $('pf_box').innerHTML = `<span class="av" style="width:56px;height:56px;font-size:20px">${demo ? 'D' : ini(u)}</span><div class="t"><b style="font-size:18px">${esc(demo ? 'Demo visitor' : u)}</b>${demo ? '<small>Temporary workspace</small>' : `<small>${esc((me && me.email) || '')}</small><small>Member since ${me && me.date_joined ? when(me.date_joined).slice(0, 10) : '-'}</small>`}</div>`;
   $('pf_data').innerHTML = demo
     ? `<p class="hint" style="margin-top:0">This is a temporary demo workspace. Everything you add here is deleted automatically when you sign out or close this page. To keep your data, create a free account.</p><button class="btn s" onclick="leaveDemo()">Create account</button>`
     : `<p class="hint" style="margin-top:0">Everything you add (jobs, candidates, resumes) is private to your account. You can delete it at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn s sec" onclick="clearData()">Delete all my jobs and candidates</button><button class="btn s sec" onclick="deleteAccount()">Delete my account and data</button></div>`;

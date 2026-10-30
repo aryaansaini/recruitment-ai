@@ -15,7 +15,7 @@ User = get_user_model()
 PASSWORD = 'Str0ng!pass-93'
 
 
-@override_settings(SIGNUPS_ENABLED=True, SIGNUP_INVITE_CODE='', MAX_SIGNUPS_PER_DAY=100)
+@override_settings(SIGNUPS_ENABLED=True, SIGNUP_INVITE_CODE='', MAX_SIGNUPS_PER_DAY=100, EMAIL_OTP_REQUIRED=True)
 class EmailOtpTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -99,12 +99,13 @@ class EmailOtpTests(TestCase):
         self.assertEqual(r.status_code, 503)
         self.assertFalse(User.objects.filter(username='riya_hr').exists())
     
-    @override_settings(SIGNUP_INVITE_CODE='letmein-123')
-    def test_invite_code_is_enforced_when_configured(self):
-        self.assertEqual(self.signup().status_code, 403)
-        self.assertEqual(self.signup(invite_code='wrong').status_code, 403)
-        self.assertEqual(self.signup(invite_code='letmein-123').status_code, 201)
+    @override_settings(SIGNUPS_ENABLED=True, SIGNUP_INVITE_CODE='', MAX_SIGNUPS_PER_DAY=100, EMAIL_OTP_REQUIRED=True)
 
+    def test_invite_code_is_enforced_when_configured(self):
+        with override_settings(SIGNUP_INVITE_CODE='letmein-123'):
+            self.assertEqual(self.signup().status_code, 403)
+            self.assertEqual(self.signup(invite_code='wrong').status_code, 403)
+            self.assertEqual(self.signup(invite_code='letmein-123').status_code, 201)
     def test_weak_passwords_are_rejected(self):
         for pw in ('short', '12345678', 'password'):
             r = self.signup(password=pw)
@@ -112,6 +113,7 @@ class EmailOtpTests(TestCase):
             self.assertIn('password', r.json())
         self.assertFalse(User.objects.filter(username='riya_hr').exists())
 
+    
 class DemoSessionTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -186,3 +188,18 @@ class ProfileTests(TestCase):
         self.assertEqual(self.c.post('/api/auth/clear-data/').status_code, 200)
         self.assertEqual(self.c.get('/api/auth/profile/').json()['jobs'], 0)
         self.assertTrue(User.objects.filter(username='real').exists())
+
+
+@override_settings(SIGNUPS_ENABLED=True, SIGNUP_INVITE_CODE='', MAX_SIGNUPS_PER_DAY=100, EMAIL_OTP_REQUIRED=False)
+class SignupWithoutOtpTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_signup_logs_in_directly_without_email(self):
+        c = APIClient()
+        r = c.post('/api/auth/signup/', {'username': 'riya_hr', 'email': 'riya@example.com',
+                                         'password': PASSWORD}, format='json')
+        self.assertEqual(r.status_code, 201)
+        self.assertIn('access', r.json())
+        self.assertTrue(User.objects.get(username='riya_hr').is_active)
+        self.assertEqual(len(mail.outbox), 0)

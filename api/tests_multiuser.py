@@ -87,13 +87,12 @@ class SignupTests(Base):
         codes = [self.client.post('/api/auth/signup/', {}, format='json').status_code for _ in range(12)]
         self.assertIn(429, codes)
 
-    def test_auth_config_is_public(self):
-        r = self.client.get('/api/auth/config/')
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.data, {'signups_enabled': True, 'invite_required': False})
-        with override_settings(SIGNUPS_ENABLED=False, SIGNUP_INVITE_CODE='x'):
-            self.assertEqual(self.client.get('/api/auth/config/').data, {'signups_enabled': False, 'invite_required': True})
-
+        def test_auth_config_is_public(self):
+            r = self.client.get('/api/auth/config/')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.data, {'signups_enabled': True, 'invite_required': False, 'email_otp_required': False})
+            with override_settings(SIGNUPS_ENABLED=False, SIGNUP_INVITE_CODE='x'):
+                self.assertEqual(self.client.get('/api/auth/config/').data, {'signups_enabled': False, 'invite_required': True, 'email_otp_required': False})
 
 class IsolationTests(Base):
     def setUp(self):
