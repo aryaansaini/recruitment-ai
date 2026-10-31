@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from api import rag
 from api.llm import LLMError, MatchResult, generate_structured
+from api.ranking import QUALIFIED_STATUSES, competition_rank
 
 logger = logging.getLogger(__name__)
 
@@ -159,26 +160,40 @@ Candidate experience: {candidate.experience} years"""
 
 # ============================================
 # AGENT 3: Candidate Ranking Agent
-# (rebuilt as a proper job-wide leaderboard on Day 8)
 # ============================================
-def candidate_ranking_agent(candidates):
-    from api.models import AgentLog
+
+def candidate_ranking_agent(candidates, job=None):
+    """Rank candidates. With `job`, each one is ranked against everyone already
+    qualified for that job (stored applications), not only against this batch."""
+    from api.models import AgentLog, Application
     print(f"[Agent 3] Ranking {len(candidates)} candidates")
 
     ranked = sorted(candidates, key=lambda c: c.score, reverse=True)
 
+    peer_scores = []
+    if job is not None:
+        peer_scores = list(
+            Application.objects.filter(job=job, status__in=QUALIFIED_STATUSES)
+            .exclude(candidate_id__in=[c.pk for c in ranked])
+            .values_list('score', flat=True)
+        )
+    all_scores = [c.score for c in ranked] + peer_scores
+
     for i, candidate in enumerate(ranked):
+        rank = competition_rank(candidate.score, all_scores) if job is not None else i + 1
+        message = f"Rank #{rank}, Score: {candidate.score}"
+        if job is not None:
+            message += f" (of {len(all_scores)} qualified for {job.title})"
         ats_mcp_update(candidate, 'ranked')
         AgentLog.objects.create(
             candidate=candidate,
             from_agent='Candidate Ranking Agent',
             to_agent='Interview Coordination Agent',
-            message=f"Rank #{i+1}, Score: {candidate.score}"
+            message=message,
         )
-        print(f"[Agent 3] Rank #{i+1}: {candidate.name}")
+        print(f"[Agent 3] Rank #{rank}: {candidate.name}")
 
     return ranked
-
 
 # ============================================
 # AGENT 4: Interview Coordination Agent
@@ -218,7 +233,7 @@ def run_full_pipeline(candidate_id, job_id):
     is_match = job_matching_agent(candidate, job)
 
     if is_match:
-        ranked = candidate_ranking_agent([candidate])
+        ranked = candidate_ranking_agent([candidate], job=job)
         slot = interview_coordination_agent(ranked[0])
     else:
         slot = None

@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import auth_views
+from . import leaderboard
 from . import views
 from .health import healthz
 
@@ -32,4 +33,5 @@ urlpatterns = [
     path('api/auth/profile/', auth_views.profile),
     path('api/auth/clear-data/', auth_views.clear_data),
     path('api/auth/demo/end/', auth_views.demo_end),
+        path('api/jobs/<int:pk>/leaderboard/', leaderboard.job_leaderboard_view),
 ]
