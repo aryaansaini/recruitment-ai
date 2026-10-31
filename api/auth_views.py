@@ -85,7 +85,7 @@ def _mask(email):
     return f'{name[:1]}***@{domain}'
 
 
-def _issue_otp(user):
+def _issue_otp(user, purpose='signup'):
     """Create a fresh 6-digit code (stored hashed) and email it. Raises if the email fails."""
     code = f'{secrets.randbelow(10 ** 6):06d}'
     now = timezone.now()
@@ -96,14 +96,15 @@ def _issue_otp(user):
         'last_sent_at': now,
     })
     minutes = int(_otp_ttl().total_seconds() // 60)
-    send_mail(
-        'Your Recruit AI verification code',
-        f'Your Recruit AI verification code is {code}.\n\n'
-        f'It expires in {minutes} minutes. If you did not sign up, ignore this email.',
-        None,                       # DEFAULT_FROM_EMAIL
-        [user.email],
-        fail_silently=False,
-    )
+    if purpose == 'reset':
+        subject = 'Your Recruit AI password reset code'
+        body = (f'Your Recruit AI password reset code is {code}.\n\n'
+                f'It expires in {minutes} minutes. If you did not ask to reset your password, ignore this email.')
+    else:
+        subject = 'Your Recruit AI verification code'
+        body = (f'Your Recruit AI verification code is {code}.\n\n'
+                f'It expires in {minutes} minutes. If you did not sign up, ignore this email.')
+    send_mail(subject, body, None, [user.email], fail_silently=False)
 
 
 def _purge_stale_unverified():
@@ -356,3 +357,76 @@ def clear_data(request):
         Candidate.objects.filter(owner=request.user).delete()   # also removes chunks, applications, logs
         Job.objects.filter(owner=request.user).delete()
     return Response({'detail': 'All your jobs and candidates were deleted.'})
+
+
+# ---------- forgot password (code by email) ----------
+class ForgotThrottle(AnonRateThrottle):
+    scope = 'forgot'
+    rate = '10/hour'          # per IP address
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+    code = serializers.RegexField(r'^\d{6}$', error_messages={'invalid': 'Enter the 6-digit code.'})
+    new_password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+def _active_user_by_email(email):
+    return (User.objects.filter(email__iexact=str(email).strip(), is_active=True)
+            .exclude(username__startswith=TEMP_PREFIX).order_by('id').first())
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([ForgotThrottle])
+def forgot_password(request):
+    """Emails a 6-digit reset code. The answer is always the same, so nobody can find out
+    which email addresses have an account."""
+    import logging
+    email = str(request.data.get('email', '')).strip()
+    if '@' not in email:
+        return Response({'detail': 'Enter the email of your account.'}, status=400)
+    reply = Response({'detail': 'If an account with this email exists, a reset code was sent.'})
+
+    user = _active_user_by_email(email)
+    if user is None or user.username == DEMO_USERNAME:
+        return reply
+    otp = EmailOTP.objects.filter(user=user).first()
+    if otp is not None and (timezone.now() - otp.last_sent_at).total_seconds() < _otp_cooldown():
+        return reply                                     # asked again too quickly: no second email
+    try:
+        _issue_otp(user, purpose='reset')
+    except Exception:
+        logging.getLogger(__name__).exception('Could not send the password reset email')
+    return reply
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([OtpThrottle])
+def reset_password(request):
+    """Checks the emailed code and sets the new password."""
+    serializer = ResetPasswordSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    invalid = Response({'detail': 'Invalid or expired code.'}, status=400)
+
+    with transaction.atomic():
+        user = _active_user_by_email(data['email'])
+        otp = EmailOTP.objects.select_for_update().filter(user=user).first() if user else None
+        if otp is None or otp.expires_at < timezone.now() or otp.attempts >= _otp_max_attempts():
+            return invalid
+        if not hmac.compare_digest(otp.code_hash, _hash_code(otp.user_id, data['code'])):
+            otp.attempts += 1
+            otp.save(update_fields=['attempts'])
+            return invalid
+        try:
+            validate_password(data['new_password'], user=user)
+        except DjangoValidationError as e:
+            return Response({'new_password': list(e.messages)}, status=400)
+        user.set_password(data['new_password'])
+        user.save(update_fields=['password'])
+        otp.delete()
+    return Response({'detail': 'Password changed. You can sign in now.'})

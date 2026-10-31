@@ -36,4 +36,6 @@ urlpatterns = [
     path('api/auth/demo/end/', auth_views.demo_end),
     path('api/jobs/<int:pk>/leaderboard/', leaderboard.job_leaderboard_view),
     path('api/match-cv/', cv_views.match_cv_view),
+    path('api/auth/forgot-password/', auth_views.forgot_password),
+    path('api/auth/reset-password/', auth_views.reset_password),
 ]

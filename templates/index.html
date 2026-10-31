@@ -281,9 +281,20 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
     <label class="f">6-digit code</label><input id="otp_code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456">
     <button class="btn sec full" id="otp_resend" style="margin-top:10px" onclick="resendOtp()">Resend code</button>
   </div>
+  <div id="forgot_box" style="display:none">
+    <div class="hint" style="margin:0 0 8px">Enter the email of your account. We will send a 6-digit code to it.</div>
+    <label class="f">Email</label><input id="fp_email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+  </div>
+  <div id="reset_box" style="display:none">
+    <div class="hint" id="rp_info" style="margin:0 0 8px"></div>
+    <label class="f">6-digit code</label><input id="rp_code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456">
+    <label class="f">New password</label><input id="rp_pass" type="password" autocomplete="new-password">
+    <div class="hint"><a href="#" onclick="setAuthMode('forgot');return false">Send a new code</a></div>
+  </div>
   <div id="login_error" role="alert"></div>
   <button class="btn full" id="login_btn" style="margin-top:6px" onclick="login()">Sign in</button>
   <div id="login_switch" class="hint" style="text-align:center"></div>
+  <div id="forgot_link" class="hint" style="text-align:center"><a href="#" onclick="setAuthMode('forgot');return false">Forgot password?</a></div>
   <div style="display:flex;align-items:center;gap:10px;margin:16px 0 4px;color:var(--muted);font-size:12px"><hr style="flex:1;border:0;border-top:1px solid var(--line)">or<hr style="flex:1;border:0;border-top:1px solid var(--line)"></div>
   <button class="btn sec full" style="margin-top:8px" onclick="demoLogin(this)">🚀 Try Demo (no login needed)</button>
   <div class="hint" style="text-align:center">The demo gives you full access with sample data. Anything you add is deleted automatically when you sign out or close the page. To keep your data, create a free account.</div>
@@ -457,6 +468,8 @@ function saveSession(d, username) {
 }
 async function login() {
   if (authMode === 'otp') return verifyOtp();
+  if (authMode === 'forgot') return sendResetCode();
+  if (authMode === 'reset') return resetPassword();
   const username = $('login_user').value.trim(), password = $('login_pass').value;
   if (authMode === 'signup') {
     const res = await fetch('/api/auth/signup/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password, email: $('su_email').value.trim(), invite_code: $('su_invite').value.trim()})});
@@ -710,6 +723,40 @@ $('cv_file').onchange = e => cvRead(e.target.files[0]);
 ['dragenter', 'dragover'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.remove('over'); }));
 $('cv_drop').addEventListener('drop', e => cvRead(e.dataTransfer.files[0]));
+
+// forgot password
+let resetEmail = '';
+const _setAuthModeBase = setAuthMode;
+setAuthMode = function (m) {
+  _setAuthModeBase(m);
+  const forgot = m === 'forgot', reset = m === 'reset';
+  $('forgot_box').style.display = forgot ? 'block' : 'none';
+  $('reset_box').style.display = reset ? 'block' : 'none';
+  $('forgot_link').style.display = m === 'login' ? '' : 'none';
+  if (forgot || reset) {
+    $('cred_fields').style.display = 'none';
+    $('login_title').textContent = forgot ? 'Forgot your password?' : 'Choose a new password';
+    $('login_btn').textContent = forgot ? 'Send reset code' : 'Change password';
+    $('login_switch').innerHTML = '<a href="#" onclick="setAuthMode(\'login\');return false">Back to sign in</a>';
+  }
+};
+async function sendResetCode() {
+  const email = $('fp_email').value.trim();
+  if (!email) { $('login_error').textContent = 'Enter the email of your account.'; return; }
+  const res = await fetch('/api/auth/forgot-password/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email})});
+  const data = await readJson(res);
+  if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
+  resetEmail = email; setAuthMode('reset');
+  $('rp_info').textContent = 'If an account exists for ' + email + ', we sent a 6-digit code. It expires in 10 minutes. Please also check your spam folder.';
+  $('rp_code').focus();
+}
+async function resetPassword() {
+  const res = await fetch('/api/auth/reset-password/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: resetEmail, code: $('rp_code').value.trim(), new_password: $('rp_pass').value})});
+  const data = await readJson(res);
+  if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
+  $('rp_code').value = ''; $('rp_pass').value = '';
+  setAuthMode('login'); toast('Password changed. Please sign in with your new password.');
+}
 
 // start
 function start() {
