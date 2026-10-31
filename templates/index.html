@@ -269,7 +269,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
 
 <div id="login_overlay"><div class="login-showcase"><div class="showcase-inner"><div class="showcase-kicker">RECRUIT AI · INTELLIGENT HIRING</div><h1>Build your dream team.<br><span>Powered by AI.</span></h1><p>Manage jobs, discover great candidates and streamline every step of your hiring process from one beautiful workspace.</p><div class="showcase-features"><div>✦ &nbsp; AI-powered candidate matching</div><div>✦ &nbsp; Smart resume screening</div><div>✦ &nbsp; Automated interview pipeline</div></div><div class="showcase-footer">RECRUIT AI / WORKSPACE</div></div></div><div class="login-form-side"><div class="lg"><svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><defs><linearGradient id="brandGradient" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#a371f7"/></linearGradient></defs><rect x="2" y="2" width="44" height="44" rx="13" fill="url(#brandGradient)"/><path d="M13 33V15h11c7 0 11 4 11 9s-4 9-11 9H13Zm8-12v6h4c3 0 4-1 4-3s-1-3-4-3h-4Z" fill="#fff"/><circle cx="36" cy="12" r="4" fill="#3fb950" stroke="#161b22" stroke-width="2"/></svg></div><div id="login_box">
   <h2 id="login_title">Sign in to Recruit AI</h2>
-  <div id="cred_fields"><label class="f">Username</label><input id="login_user" autocomplete="username">
+  <div id="cred_fields"><label class="f" id="login_user_label">Username or email</label><input id="login_user" autocomplete="username">
   <label class="f">Password</label><input id="login_pass" type="password" autocomplete="current-password"></div>
   <div id="signup_extra" style="display:none">
     <label class="f">Email</label><input id="su_email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
@@ -483,10 +483,10 @@ async function login() {
   const data = await readJson(res);
   if (!res.ok) {
     $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.'
-      : res.status === 401 ? 'Wrong username or password (or your email is not verified yet).' : errText(data);
+      : res.status === 401 ? 'Wrong username, email or password (or your email is not verified yet).' : errText(data);
     return;
   }
-  saveSession(data, username);
+  saveSession(data, await realUsername(data, username));
 }
 async function verifyOtp() {
   const res = await fetch('/api/auth/verify-otp/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: pendingUser, code: $('otp_code').value.trim()})});
@@ -757,6 +757,22 @@ async function resetPassword() {
   $('rp_code').value = ''; $('rp_pass').value = '';
   setAuthMode('login'); toast('Password changed. Please sign in with your new password.');
 }
+
+// sign in with username or email
+async function realUsername(data, typed) {
+  if (!typed.includes('@')) return typed;
+  try {
+    const r = await fetch('/api/auth/profile/', {headers: {Authorization: 'Bearer ' + data.access}});
+    if (r.ok) { const p = await r.json(); if (p.username) return p.username; }
+  } catch (e) {}
+  return typed;
+}
+const _setAuthModeBeforeLabel = setAuthMode;
+setAuthMode = function (m) {
+  _setAuthModeBeforeLabel(m);
+  $('login_user_label').textContent = m === 'signup' ? 'Username' : 'Username or email';
+  $('login_user').placeholder = m === 'signup' ? '' : 'Username or email';
+};
 
 // start
 function start() {

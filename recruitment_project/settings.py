@@ -212,3 +212,7 @@ EMAIL_OTP_REQUIRED = False if RUNNING_TESTS else os.environ.get('EMAIL_OTP_REQUI
 # True  = the four agents run inside a Google ADK SequentialAgent.
 # False = the same agents run as plain Python functions.
 PIPELINE_USE_ADK = os.environ.get('PIPELINE_USE_ADK', 'True') == 'True'
+
+
+# ---------- Sign in with username OR email ----------
+AUTHENTICATION_BACKENDS = ['api.auth_backends.EmailOrUsernameBackend']
