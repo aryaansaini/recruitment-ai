@@ -607,7 +607,7 @@ const runPipeline = btn => busy(btn, async () => {
   clearInterval(timer); const d = await readJson(res);
   if (!res.ok) { setSteps(0, -1); return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
   const ran = d.interview_slot ? 4 : 2; setSteps(ran, -1, ran);
-  $('p_result').innerHTML = `<div class="res"><div class="rw" style="padding:0 0 12px">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100</small></div>${badge(d.status)}</div>
+  $('p_result').innerHTML = `<div class="res"><div class="rw" style="padding:0 0 12px">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100${d.rank ? ' · Rank #' + esc(d.rank) : ''}</small></div>${badge(d.status)}</div>
     <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
     ${d.breakdown ? `<div style="margin-top:12px">${[['Skills', d.breakdown.skills], ['Experience', d.breakdown.experience], ['Education', d.breakdown.education]].map(([l, v]) => `<div class="fun" style="grid-template-columns:90px 1fr 34px"><span>${l}</span><div class="bar"><i style="width:${Math.min(100, v)}%"></i></div><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
     ${(d.evidence || []).length ? `<div style="margin-top:12px"><b>Evidence from the resume</b>${d.evidence.map(e => `<small style="display:block;margin-top:6px">“${esc(e.quote)}” <span class="chip">${esc(e.section)}</span> ${esc(e.supports)}</small>`).join('')}</div>` : ''}

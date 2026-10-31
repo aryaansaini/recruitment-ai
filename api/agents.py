@@ -222,6 +222,7 @@ def interview_coordination_agent(candidate):
 # MAIN PIPELINE
 # ============================================
 def run_full_pipeline(candidate_id, job_id):
+    from django.conf import settings
     from api.models import Application, Candidate, Job
 
     candidate = Candidate.objects.get(id=candidate_id)
@@ -229,14 +230,19 @@ def run_full_pipeline(candidate_id, job_id):
 
     print("===== PIPELINE START =====")
 
-    candidate = resume_screening_agent(candidate, job)
-    is_match = job_matching_agent(candidate, job)
-
-    if is_match:
-        ranked = candidate_ranking_agent([candidate], job=job)
-        slot = interview_coordination_agent(ranked[0])
+    if getattr(settings, 'PIPELINE_USE_ADK', True):
+        # the four agents run as Google ADK agents inside a SequentialAgent
+        from api.adk_pipeline import run_adk_pipeline
+        outcome = run_adk_pipeline(candidate, job)
+        candidate, slot = outcome.candidate, outcome.slot
     else:
-        slot = None
+        candidate = resume_screening_agent(candidate, job)
+        is_match = job_matching_agent(candidate, job)
+        if is_match:
+            ranked = candidate_ranking_agent([candidate], job=job)
+            slot = interview_coordination_agent(ranked[0])
+        else:
+            slot = None
 
     # Per-job record (a candidate can apply to many jobs)
     Application.objects.update_or_create(

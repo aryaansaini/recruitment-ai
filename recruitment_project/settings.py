@@ -196,3 +196,5 @@ LOGGING = {
 
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Recruit AI <no-reply@recruit-ai.local>')
+
+PIPELINE_USE_ADK = os.environ.get('PIPELINE_USE_ADK', 'True') == 'True'

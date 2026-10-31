@@ -13,6 +13,9 @@ from .agents import run_full_pipeline
 from .auth_views import DEMO_USERNAME
 from .embeddings import EmbeddingError
 from .models import AgentLog, Candidate, Job
+
+from .leaderboard import job_leaderboard
+
 from .resume_parser import (
     ALLOWED_EXTENSIONS,
     ResumeParseError,
@@ -156,6 +159,7 @@ def run_pipeline(request):
     job = get_object_or_404(Job, pk=serializer.validated_data['job_id'], owner=request.user)
 
     candidate, slot = run_full_pipeline(candidate.id, job.id)
+    standing = next((r for r in job_leaderboard(job) if r['candidate_id'] == candidate.id), None)
     return Response({
         'name': candidate.name,
         'status': candidate.status,
@@ -166,6 +170,7 @@ def run_pipeline(request):
         'evidence': getattr(candidate, 'ai_evidence', []),
         'retrieval': getattr(candidate, 'ai_retrieval', ''),
         'interview_slot': slot,
+        'rank': standing['rank'] if standing else None,
     })
 
 
