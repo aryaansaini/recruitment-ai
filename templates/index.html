@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Recruit AI</title>
-<style>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='48'%20y2='48'%3E%3Cstop%20stop-color='%2358a6ff'/%3E%3Cstop%20offset='1'%20stop-color='%23a371f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x='2'%20y='2'%20width='44'%20height='44'%20rx='13'%20fill='url(%23g)'/%3E%3Cpath%20d='M13%2033V15h11c7%200%2011%204%2011%209s-4%209-11%209H13Zm8-12v6h4c3%200%204-1%204-3s-1-3-4-3h-4Z'%20fill='%23fff'/%3E%3Ccircle%20cx='36'%20cy='12'%20r='4'%20fill='%233fb950'%20stroke='%23161b22'%20stroke-width='2'/%3E%3C/svg%3E">
+<style>p90
 :root{--bg:#fff;--canvas:#f6f8fa;--inset:#f6f8fa;--text:#1f2328;--muted:#656d76;--line:#d0d7de;--line2:#d8dee4;--accent:#0969da;--ok:#1a7f37;--okbtn:#1f883d;--okbtn2:#1a7f37;--warn:#9a6700;--bad:#cf222e;--vio:#8250df;--hdr:#24292f;--hdrt:#fff;--sel:#fd8c73;--sh:0 1px 0 rgba(31,35,40,.04);--r:6px;color-scheme:light}
 :root[data-theme=dark]{--bg:#0d1117;--canvas:#161b22;--inset:#010409;--text:#e6edf3;--muted:#7d8590;--line:#30363d;--line2:#21262d;--accent:#2f81f7;--ok:#3fb950;--okbtn:#238636;--okbtn2:#2ea043;--warn:#d29922;--bad:#f85149;--vio:#a371f7;--hdr:#161b22;--sh:none;color-scheme:dark}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
@@ -273,7 +274,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   <div id="signup_extra" style="display:none">
     <label class="f">Email</label><input id="su_email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
     <div id="su_invite_wrap" style="display:none"><label class="f">Invite code</label><input id="su_invite" autocomplete="off"></div>
-    <div class="hint">Everything you add stays private to your account and you can delete it at any time from My Profile.</div>
+    <div class="hint">We will email you a 6-digit code to verify this address. Everything you add stays private to your account and you can delete it at any time from My Profile.</div>
   </div>
   <div id="otp_box" style="display:none">
     <div class="hint" id="otp_info" style="margin:0 0 8px"></div>
@@ -422,7 +423,7 @@ function setAuthMode(m) {
   $('signup_extra').style.display = m === 'signup' ? 'block' : 'none';
   $('otp_box').style.display = m === 'otp' ? 'block' : 'none';
   $('login_title').textContent = m === 'login' ? 'Sign in to Recruit AI' : m === 'signup' ? 'Create your account' : 'Verify your email';
-  $('login_btn').textContent = m === 'login' ? 'Sign in' : m === 'signup' ? (window.otpRequired ? 'Send verification code' : 'Create account') : 'Verify and continue';
+  $('login_btn').textContent = m === 'login' ? 'Sign in' : m === 'signup' ? 'Send verification code' : 'Verify and continue';
   $('login_pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
   $('login_switch').innerHTML = m === 'login'
     ? (window.signupsOpen === false ? '' : 'New here? <a href="#" onclick="setAuthMode(\'signup\');return false">Create an account</a>')
@@ -446,7 +447,6 @@ async function login() {
     const res = await fetch('/api/auth/signup/', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password, email: $('su_email').value.trim(), invite_code: $('su_invite').value.trim()})});
     const data = await readJson(res);
     if (!res.ok) { $('login_error').textContent = res.status === 429 ? 'Too many attempts. Wait a while.' : errText(data); return; }
-    if (data.access) { saveSession(data, username); return; }
     pendingUser = username; setAuthMode('otp');
     $('otp_info').textContent = 'We sent a 6-digit code to ' + data.email + '. It expires in 10 minutes. Please also check your spam folder.';
     startCooldown(60); $('otp_code').focus(); return;
@@ -472,7 +472,7 @@ async function resendOtp() {
   if (!res.ok) { $('login_error').textContent = errText(data); return; }
   $('login_error').textContent = ''; toast('A new code was sent.'); startCooldown(60);
 }
-fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; window.otpRequired = c.email_otp_required; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
+fetch('/api/auth/config/').then(r => r.json()).then(c => { window.signupsOpen = c.signups_enabled; $('su_invite_wrap').style.display = c.invite_required ? 'block' : 'none'; setAuthMode(authMode); }).catch(() => {});
 const demoLogin = btn => busy(btn, async () => {
   const res = await fetch('/api/auth/demo/', {method: 'POST'});
   const data = await readJson(res);
@@ -646,7 +646,7 @@ async function loadProfile() { const r = await api('/api/auth/profile/'); if (r.
 function renderProfile() {
   if (!$('pf_box')) return;
   const u = (me && me.username) || localStorage.getItem('username') || '', demo = isDemo();
-  $('pf_box').innerHTML = `<span class="av" style="width:56px;height:56px;font-size:20px">${demo ? 'D' : ini(u)}</span><div class="t"><b style="font-size:18px">${esc(demo ? 'Demo visitor' : u)}</b>${demo ? '<small>Temporary workspace</small>' : `<small>${esc((me && me.email) || '')}</small><small>Member since ${me && me.date_joined ? when(me.date_joined).slice(0, 10) : '-'}</small>`}</div>`;
+  $('pf_box').innerHTML = `<span class="av" style="width:56px;height:56px;font-size:20px">${demo ? 'D' : ini(u)}</span><div class="t"><b style="font-size:18px">${esc(demo ? 'Demo visitor' : u)}</b>${demo ? '<small>Temporary workspace</small>' : `<small>${esc((me && me.email) || '')} <span class="lbl" style="color:var(--ok);border-color:var(--ok)">verified</span></small><small>Member since ${me && me.date_joined ? when(me.date_joined).slice(0, 10) : '-'}</small>`}</div>`;
   $('pf_data').innerHTML = demo
     ? `<p class="hint" style="margin-top:0">This is a temporary demo workspace. Everything you add here is deleted automatically when you sign out or close this page. To keep your data, create a free account.</p><button class="btn s" onclick="leaveDemo()">Create account</button>`
     : `<p class="hint" style="margin-top:0">Everything you add (jobs, candidates, resumes) is private to your account. You can delete it at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn s sec" onclick="clearData()">Delete all my jobs and candidates</button><button class="btn s sec" onclick="deleteAccount()">Delete my account and data</button></div>`;
