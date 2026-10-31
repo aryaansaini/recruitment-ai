@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import secrets
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -25,9 +26,10 @@ from .models import (
 )
 
 User = get_user_model()
-
+logger = logging.getLogger(__name__)
 DEMO_USERNAME = 'demo_recruiter'      # read-only TEMPLATE account (nobody can log in to it)
 TEMP_PREFIX = 'demo_session_'         # every demo visitor gets a throw-away account with this prefix
+
 
 
 # ---------- throttles ----------
@@ -184,6 +186,7 @@ def signup(request):
     try:
         _issue_otp(user)
     except Exception:
+        logger.exception('Could not send the sign-up OTP email')
         user.delete()
         return Response({'detail': 'Could not send the email right now. Please try again in a minute.'},
                         status=503)

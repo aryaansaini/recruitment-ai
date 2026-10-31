@@ -87,6 +87,7 @@ class SignupTests(Base):
         codes = [self.client.post('/api/auth/signup/', {}, format='json').status_code for _ in range(12)]
         self.assertIn(429, codes)
 
+        @override_settings(EMAIL_OTP_REQUIRED=False)
         def test_auth_config_is_public(self):
             r = self.client.get('/api/auth/config/')
             self.assertEqual(r.status_code, 200)

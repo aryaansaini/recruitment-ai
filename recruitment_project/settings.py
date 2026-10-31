@@ -194,7 +194,21 @@ LOGGING = {
     'root': {'handlers': ['console'], 'level': 'INFO'},
 }
 
+
+# ---------- Email (sign-up OTP) ----------
+# Local default: emails are printed in the terminal (no real email is sent).
+# On Render set EMAIL_BACKEND=api.brevo_backend.BrevoEmailBackend and BREVO_API_KEY
+# (Render's free plan blocks the normal SMTP ports).
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Recruit AI <no-reply@recruit-ai.local>')
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
 
+# True  = sign-up first emails a 6-digit code and the account is activated after it is entered.
+# False = sign-up logs the user in directly. Tests always use False (individual tests override it).
+EMAIL_OTP_REQUIRED = False if RUNNING_TESTS else os.environ.get('EMAIL_OTP_REQUIRED', 'False') == 'True'
+
+
+# ---------- Pipeline ----------
+# True  = the four agents run inside a Google ADK SequentialAgent.
+# False = the same agents run as plain Python functions.
 PIPELINE_USE_ADK = os.environ.get('PIPELINE_USE_ADK', 'True') == 'True'

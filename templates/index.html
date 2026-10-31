@@ -304,6 +304,7 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
     <button class="tab" data-t="profile"><span class="i">☺</span>My Profile</button>
     <button class="tab" data-t="jobs"><span class="i">▤</span>Jobs<span class="cnt" id="n_jobs">0</span></button>
     <button class="tab" data-t="candidates"><span class="i">♙</span>Candidates<span class="cnt" id="n_cands">0</span></button>
+    <button class="tab" data-t="cvmatch"><span class="i">⌕</span>CV Match</button>
     <button class="tab" data-t="pipeline"><span class="i">✧</span>Pipeline</button>
     <button class="tab" data-t="rankings"><span class="i">♛</span>Leaderboard</button>
   </nav>
@@ -369,6 +370,20 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
     </div>
   </section>
 
+  <section class="view" id="v-cvmatch">
+    <div class="grid two">
+      <div class="box"><h2>Upload a CV</h2><div class="bd">
+        <label class="drop" id="cv_drop"><input type="file" id="cv_file" accept=".pdf,.docx,.txt" hidden>
+          <b>Drop a CV here or click to browse</b><small class="m">PDF, DOCX or TXT, max 5 MB. This does not add a candidate.</small></label>
+        <div class="hint" id="cv_msg" aria-live="polite"></div>
+        <label class="f">Years of experience</label><input id="cv_exp" type="number" min="0" value="0" inputmode="numeric">
+        <button class="btn full" onclick="matchCv(this)">Find matching jobs</button>
+        <p class="hint">The CV is compared with every job you created: required skills and minimum experience.</p></div>
+      </div>
+      <div class="box"><h2>Matching jobs</h2><div id="cv_results"><div class="empty">Upload a CV to see which jobs it fits.</div></div></div>
+    </div>
+  </section>
+
   <section class="view" id="v-pipeline">
     <div class="grid two">
       <div class="box"><h2>Choose candidate and job</h2><div class="bd">
@@ -403,7 +418,7 @@ const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w
 const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
 const ring = (s, big) => { const v = Math.max(0, Math.min(100, Number(s) || 0)); return `<div class="ring${big ? ' big' : ''}" style="--p:${v};--rc:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)'}"><b>${Math.round(v)}</b></div>`; };
 
-const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score'], profile: ['My Profile', 'Your account and your data']};
+const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score'], profile: ['My Profile', 'Your account and your data'], cvmatch: ['CV Match', 'Upload a CV and see which of your jobs it fits']};
 
 function toast(msg, type = 'ok') { const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500); }
 async function busy(btn, fn) { const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…'; try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; } }
@@ -663,6 +678,38 @@ window.addEventListener('pagehide', () => {
   const t = localStorage.getItem('access');
   if (t) fetch('/api/auth/demo/end/', {method: 'POST', keepalive: true, headers: {Authorization: 'Bearer ' + t}});
 });
+
+// CV -> jobs
+let cvData = null;
+async function cvRead(file) {
+  if (!file) return;
+  if (!/\.(pdf|docx|txt)$/i.test(file.name)) { $('cv_msg').textContent = '⚠️ Only PDF, DOCX or TXT files are supported.'; return; }
+  $('cv_msg').textContent = '⏳ Reading CV…'; $('cv_results').innerHTML = empty('Upload a CV to see which jobs it fits.');
+  const fd = new FormData(); fd.append('resume', file);
+  const res = await api('/api/parse-resume/', {method: 'POST', body: fd}); const d = await readJson(res);
+  if (!res.ok) { cvData = null; $('cv_msg').textContent = '⚠️ ' + errText(d); return; }
+  cvData = {text: d.text || '', skills: d.skills || []};
+  const years = [...cvData.text.matchAll(/(\d{1,2})\s*\+?\s*(?:years?|yrs?)/gi)].map(m => +m[1]).filter(n => n <= 40);
+  if (years.length) $('cv_exp').value = Math.max(...years);
+  $('cv_msg').textContent = `✅ Read "${file.name}": ${cvData.skills.length} skills found. Experience is a guess from the CV (${$('cv_exp').value} years), please check it, then press the button.`;
+}
+function renderCv(d) {
+  const label = {eligible: 'Eligible', partial: 'Partial match', not_a_match: 'Not a match'};
+  const cls = {eligible: 'interview_scheduled', partial: 'matched', not_a_match: 'rejected'};
+  if (!d.jobs.length) { $('cv_results').innerHTML = empty('You have no jobs yet. Create a job first, then match a CV.'); return; }
+  const head = `<div class="rw"><div class="t"><b>Eligible for ${esc(d.eligible_count)} of ${esc(d.total_jobs)} jobs</b><small>Based on required skills and minimum experience.</small></div></div>`;
+  $('cv_results').innerHTML = head + d.jobs.map(j => `<div class="rw">${ring(j.score)}<div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small>${j.matched_skills.length ? chips(j.matched_skills.join(','), 8) : ''}<small>${j.missing_skills.length ? 'Missing: ' + esc(j.missing_skills.join(', ')) : 'All required skills found'} · needs ${esc(j.min_experience)}+ yrs${j.experience_ok ? '' : ' (CV is below this)'}</small></div><span class="lbl ${cls[j.verdict]}">${label[j.verdict]}</span></div>`).join('');
+}
+const matchCv = btn => busy(btn, async () => {
+  if (!cvData) return toast('Upload a CV first.', 'err');
+  const res = await jsonPost('/api/match-cv/', {skills: cvData.skills, experience: $('cv_exp').value, resume_text: cvData.text});
+  const d = await readJson(res); if (!res.ok) return toast(errText(d), 'err');
+  renderCv(d);
+});
+$('cv_file').onchange = e => cvRead(e.target.files[0]);
+['dragenter', 'dragover'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.remove('over'); }));
+$('cv_drop').addEventListener('drop', e => cvRead(e.dataTransfer.files[0]));
 
 // start
 function start() {
