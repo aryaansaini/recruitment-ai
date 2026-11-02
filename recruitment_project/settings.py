@@ -165,6 +165,9 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # Tokens carry a fingerprint of the password hash. Changing the password (e.g. the forgot-password
+    # reset) makes every older access and refresh token invalid. See api/token_views.py.
+    'CHECK_REVOKE_TOKEN': True,
 }
 
 

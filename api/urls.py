@@ -1,11 +1,11 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 from . import auth_views
 from . import leaderboard
 from . import views
 from .health import healthz
 from . import cv_views
 from . import board_views
+from . import token_views
 
 urlpatterns = [
     path('healthz', healthz),
@@ -13,7 +13,7 @@ urlpatterns = [
 
     # auth
     path('api/auth/login/', views.LoginView.as_view()),
-    path('api/auth/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/refresh/', token_views.RevocableTokenRefreshView.as_view()),
     path('api/auth/me/', views.me),
     path('api/auth/config/', auth_views.auth_config),
 

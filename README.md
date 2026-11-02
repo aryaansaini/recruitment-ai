@@ -209,6 +209,8 @@ With `EMAIL_OTP_REQUIRED=False` (the default) sign-up creates an active account 
 1. `POST /api/auth/forgot-password/` with `email`. The answer is **always the same** ("If an account with this email exists, a reset code was sent"), so nobody can find out which addresses have an account. Demo accounts are excluded. A second request within 60 seconds does not send a second email.
 2. `POST /api/auth/reset-password/` with `email`, `code` and `new_password`. The new password is checked with Django's password validators, then saved, and the code is deleted so it cannot be used twice. Wrong codes, expired codes and unknown emails all return the same "Invalid or expired code" error.
 
+**Signing out everywhere.** Every JWT carries a fingerprint of the account's password hash (SimpleJWT's `CHECK_REVOKE_TOKEN`). After a password reset, or any other password change, tokens issued earlier no longer match: access tokens are rejected and `POST /api/auth/refresh/` answers 401 (`api/token_views.py`), so every device must sign in again with the new password. This needs no extra database tables. The first deploy that enables it signs everyone out once, because older tokens have no fingerprint.
+
 **Rate limits (per IP address):** sign-up 10/hour, forgot-password 10/hour, verify / resend / reset 40/hour (shared), login 10/minute. The counters live in each process's memory, so they reset when the server restarts.
 
 **Email delivery.** By default emails are printed to the console. On hosts that block SMTP (Render's free plan does), use the included Brevo HTTPS backend: set `EMAIL_BACKEND=api.brevo_backend.BrevoEmailBackend`, `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL`. Check your setup with:
@@ -341,7 +343,7 @@ All endpoints except those under "Public" require a JWT (`Authorization: Bearer 
 | GET | `/healthz` | Health check |
 | POST | `/api/auth/signup/` | Create an account |
 | POST | `/api/auth/login/` | Obtain access and refresh tokens (username **or** email) |
-| POST | `/api/auth/refresh/` | Refresh the access token |
+| POST | `/api/auth/refresh/` | New access token from a refresh token (401 after a password change) |
 | POST | `/api/auth/demo/` | Start a temporary demo workspace |
 | POST | `/api/auth/verify-otp/`, `/api/auth/resend-otp/` | Email-OTP verification (when enabled) |
 | POST | `/api/auth/forgot-password/` | Email a 6-digit password reset code (same answer for every address) |
@@ -378,7 +380,7 @@ All endpoints except those under "Public" require a JWT (`Authorization: Bearer 
 python manage.py test
 ```
 
-The suite (247 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
+The suite (257 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, token revocation, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
 
 ---
 
@@ -441,7 +443,6 @@ These are documented so the project's current scope is clear:
 - The agent log is stored per candidate, not per job, so the timeline cannot tell which job a hand-off belonged to.
 - Interview scheduling proposes a time slot three days ahead. It does **not** integrate with a real calendar and does not send invitations. The meeting link in the result is generated text, not a real meeting.
 - Email addresses are not verified unless `EMAIL_OTP_REQUIRED` is enabled.
-- Changing the password with the reset flow does **not** revoke refresh tokens that were issued earlier; they stay valid until they expire (7 days).
 - Rate-limit counters are kept in each server process's memory (the Docker image runs one worker), so they reset on restart.
 - The AI model runs on a free API tier. When its quota is exhausted, the rule-based fallback is used and flagged.
 
@@ -460,9 +461,6 @@ Change `[ ]` to `[x]` as items are completed.
 - [ ] Agents connected to the MCP servers through ADK's `McpToolset`
 - [ ] Interview scheduling with slot logic and `.ics` invitations
 
-**Accounts**
-- [ ] Revoke refresh tokens after a password reset (JWT blacklist)
-
 
 **Done**
 - [x] JWT authentication and per-recruiter data isolation
@@ -472,6 +470,7 @@ Change `[ ]` to `[x]` as items are completed.
 - [x] Demo workspaces and My Profile
 - [x] Email-OTP sign-up verification, forgot password by emailed code, Brevo email delivery
 - [x] Sign in with username or email
+- [x] Password reset signs the account out everywhere (old access and refresh tokens stop working)
 - [x] Four agents orchestrated by an ADK `SequentialAgent`, with tests using a stub LLM
 - [x] Per-job ranking and job leaderboard API
 - [x] CV Match tab and endpoint
