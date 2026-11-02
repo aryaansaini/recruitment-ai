@@ -5,6 +5,7 @@ from . import leaderboard
 from . import views
 from .health import healthz
 from . import cv_views
+from . import board_views
 
 urlpatterns = [
     path('healthz', healthz),
@@ -22,6 +23,9 @@ urlpatterns = [
     path('api/run-pipeline/', views.run_pipeline),
     path('api/candidates/', views.get_candidates),
     path('api/candidates/<int:pk>/', views.delete_candidate),
+    path('api/candidates/<int:pk>/detail/', board_views.candidate_detail),
+    path('api/applications/', board_views.list_applications),
+    path('api/applications/<int:pk>/status/', board_views.set_application_status),
     path('api/jobs/', views.get_jobs),
     path('api/jobs/<int:pk>/', views.delete_job),
     path('api/logs/', views.get_logs),

@@ -263,6 +263,21 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   input,textarea,select{font-size:16px}
 }
 
+/* candidate detail, Kanban, agent timeline */
+.lnk{background:none;border:0;padding:0;margin:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-align:left}.lnk:hover{text-decoration:underline}
+.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:14px;overflow-x:auto;padding-bottom:10px;align-items:start}
+.kcol{background:var(--canvas);border:1px solid var(--line);border-radius:12px;min-width:0}
+.kcol.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--canvas))}
+.kh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px 12px 0 0}
+.kb{display:grid;gap:10px;padding:0 10px 12px;min-height:60px}
+.kcard{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px;cursor:grab}.kcard:active{cursor:grabbing}
+.kcard .top{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.kcard select{min-height:32px;padding:4px 8px;font-size:12px}
+.ti{display:grid;grid-template-columns:34px 1fr;gap:12px;position:relative;padding-bottom:18px}
+.ti:not(:last-child):before{content:'';position:absolute;left:16px;top:34px;bottom:0;width:2px;background:var(--line)}
+.td{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:var(--bg);display:grid;place-items:center;font-size:15px}
+.tb p{margin:4px 0 0;overflow-wrap:anywhere}.tb small{display:inline;margin-left:6px;color:var(--muted)}
+.resume{white-space:pre-wrap;max-height:360px;overflow:auto;font-size:13px;background:var(--inset);border:1px solid var(--line);border-radius:8px;padding:12px}
 </style>
 </head>
 <body>
@@ -318,6 +333,8 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
     <button class="tab" data-t="cvmatch"><span class="i">⌕</span>CV Match</button>
     <button class="tab" data-t="pipeline"><span class="i">✧</span>Pipeline</button>
     <button class="tab" data-t="rankings"><span class="i">♛</span>Leaderboard</button>
+    <button class="tab" data-t="kanban"><span class="i">▥</span>Kanban</button>
+    <button class="tab" data-t="timeline"><span class="i">⏱</span>Timeline</button>
   </nav>
 </div></div>
 
@@ -411,9 +428,23 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
   </section>
 
   <section class="view" id="v-rankings">
+    <div class="box" style="margin-bottom:16px"><div class="filters" style="border:0"><select id="lb_job" onchange="loadLeaderboard()" aria-label="Job"></select></div></div>
     <div class="grid pod3" id="podium"></div>
     <div class="box"><h2>Full ranking</h2><div id="rank_list"></div></div>
   </section>
+
+  <section class="view" id="v-kanban">
+    <div class="box" style="margin-bottom:16px"><div class="filters" style="border:0;align-items:center"><select id="kb_job" onchange="loadBoard()" aria-label="Job"></select><span class="hint" style="margin:0;flex:2">Drag a card to another column, or use the menu on the card. Moves are saved and logged.</span></div></div>
+    <div class="kanban" id="kb_cols"></div>
+  </section>
+
+  <section class="view" id="v-timeline">
+    <div class="box"><h2>Agent activity</h2>
+      <div class="filters"><select id="tl_cand" onchange="renderTimeline()" aria-label="Candidate"></select></div>
+      <div class="bd" id="tl_list"></div></div>
+  </section>
+
+  <section class="view" id="v-candidate"><div id="cd_box"></div></section>
 </div>
 <div id="toasts"></div>
 
@@ -429,7 +460,7 @@ const ini = n => esc(String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w
 const chips = (s, n = 4) => { const a = String(s || '').split(',').map(x => x.trim()).filter(Boolean); return `<div class="chips">${a.slice(0, n).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${a.length > n ? `<span class="chip">+${a.length - n}</span>` : ''}</div>`; };
 const ring = (s, big) => { const v = Math.max(0, Math.min(100, Number(s) || 0)); return `<div class="ring${big ? ' big' : ''}" style="--p:${v};--rc:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)'}"><b>${Math.round(v)}</b></div>`; };
 
-const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score'], profile: ['My Profile', 'Your account and your data'], cvmatch: ['CV Match', 'Upload a CV and see which of your jobs it fits']};
+const TITLES = {overview: ['Dashboard', 'Your hiring pipeline at a glance'], jobs: ['Jobs', 'Create the roles your agents screen against'], candidates: ['Candidates', 'Upload resumes and track every applicant'], pipeline: ['Pipeline', 'Four AI agents, one click'], rankings: ['Leaderboard', 'Top candidates by AI score'], profile: ['My Profile', 'Your account and your data'], cvmatch: ['CV Match', 'Upload a CV and see which of your jobs it fits'], kanban: ['Kanban', 'Move applications between hiring stages'], timeline: ['Agent timeline', 'Every hand-off between the agents'], candidate: ['Candidate', 'Profile, scores and agent activity']};
 
 function toast(msg, type = 'ok') { const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; $('toasts').appendChild(t); setTimeout(() => t.remove(), 4500); }
 async function busy(btn, fn) { const old = btn.textContent; btn.disabled = true; btn.textContent = 'Please wait…'; try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; } }
@@ -531,7 +562,7 @@ function show(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'v-' + name));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.t === name));
   $('title').textContent = TITLES[name][0]; $('sub').textContent = TITLES[name][1];
-  location.hash = name; scrollTo(0, 0);
+  viewHook(name); location.hash = name; scrollTo(0, 0);
 }
 $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); });
 
@@ -539,7 +570,7 @@ $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); i
 let jobs = [], cands = [];
 const load = async url => { const r = await api(url); return r.ok ? r.json() : []; };
 async function refresh() { const [j, c] = await Promise.all([load('/api/jobs/'), load('/api/candidates/')]); jobs = j; cands = c; renderAll(); }
-function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderRank(); renderInterviews(); renderProfile(); $('n_jobs').textContent = jobs.length; $('n_cands').textContent = cands.length; }
+function renderAll() { renderHero(); renderFunnel(); renderStats(); renderJobs(); renderCands(); renderSelects(); renderJobSelects(); viewHook(); renderInterviews(); renderProfile(); $('n_jobs').textContent = jobs.length; $('n_cands').textContent = cands.length; }
 
 function renderHero() {
   const h = new Date().getHours(), u = localStorage.getItem('username') || '';
@@ -565,7 +596,7 @@ function renderCands() {
   const q = $('q').value.toLowerCase(), sf = $('sf').value;
   const rows = cands.filter(c => (!sf || c.status === sf) && (!q || (c.name + ' ' + c.skills).toLowerCase().includes(q)));
   $('cands_list').innerHTML = !rows.length ? empty(cands.length ? 'No candidate matches this filter.' : 'No candidates yet. Upload a resume to start.') :
-    rows.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.experience)} yrs</small>${chips(c.skills)}</div>${c.score > 0 ? ring(c.score) : ''}${badge(c.status)}${isDemo() ? '' : `<button class="btn s sec" style="min-height:28px;padding:0 8px" title="Delete" aria-label="Delete" onclick="delCandidate(${esc(c.id)})">🗑</button>`}</div>`).join('');
+    rows.map(c => `<div class="rw"><span class="av" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</span><div class="t"><b>${candLink(c.id, c.name)}</b><small>${esc(c.email)} · ${esc(c.experience)} yrs</small>${chips(c.skills)}</div>${c.score > 0 ? ring(c.score) : ''}${badge(c.status)}${isDemo() ? '' : `<button class="btn s sec" style="min-height:28px;padding:0 8px" title="Delete" aria-label="Delete" onclick="delCandidate(${esc(c.id)})">🗑</button>`}</div>`).join('');
 }
 function renderSelects() {
   const keep = [$('p_cand').value, $('p_job').value];
@@ -577,7 +608,7 @@ function renderRank() {
   const r = cands.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
   $('podium').innerHTML = r.slice(0, 3).map((c, i) => `<div class="box pod"><div style="font-size:30px">${['🥇', '🥈', '🥉'][i]}</div><h3 style="margin:6px 0 2px">${esc(c.name)}</h3><small class="m">${esc(c.experience)} yrs experience</small><div style="display:grid;place-items:center;margin-top:12px">${ring(c.score, 1)}</div></div>`).join('');
   $('rank_list').innerHTML = !r.length ? empty('No scores yet. Run the pipeline on a candidate.') :
-    r.map((c, i) => `<div class="rw"><div style="width:28px;font-size:18px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${esc(c.name)}</b>${chips(c.skills, 6)}<div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
+    r.map((c, i) => `<div class="rw"><div style="width:28px;font-size:18px;text-align:center;flex:none">${['🥇', '🥈', '🥉'][i] || i + 1}</div>${ring(c.score)}<div class="t"><b>${candLink(c.id, c.name)}</b>${chips(c.skills, 6)}<div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, c.score)}%"></i></div></div>${badge(c.status)}</div>`).join('');
 }
 function renderInterviews() {
   const s = cands.filter(c => c.status === 'interview_scheduled');
@@ -774,6 +805,113 @@ setAuthMode = function (m) {
   $('login_user').placeholder = m === 'signup' ? '' : 'Username or email';
 };
 
+// ---- candidate detail, job leaderboard, Kanban, agent timeline ----
+const COLS = [['pending', 'Pending', 'var(--muted)'], ['shortlisted', 'Shortlisted', 'var(--accent)'], ['matched', 'Matched', 'var(--warn)'], ['ranked', 'Ranked', 'var(--vio)'], ['interview_scheduled', 'Interview', 'var(--ok)'], ['rejected', 'Rejected', 'var(--bad)']];
+const AGENTS = {'Resume Screening Agent': ['🔎', 'var(--accent)'], 'Job Matching Agent': ['🧩', 'var(--warn)'], 'Candidate Ranking Agent': ['📈', 'var(--vio)'], 'Interview Coordination Agent': ['📅', 'var(--ok)'], 'Recruiter': ['👤', 'var(--muted)']};
+const medal = r => ['🥇', '🥈', '🥉'][r - 1] || '#' + r;
+const activeView = () => { const v = document.querySelector('.view.active'); return v ? v.id.slice(2) : 'overview'; };
+const candLink = (id, name) => `<button type="button" class="lnk" onclick="openCandidate(${esc(id)})">${esc(name)}</button>`;
+let lbReady = false, board = [], allLogs = [], cdBack = 'candidates', cdId = null;
+
+function fillSel(id, first, items) {
+  const el = $(id), keep = el.value;
+  el.innerHTML = `<option value="">${esc(first)}</option>` + items.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+  if ([...el.options].some(o => o.value === keep)) el.value = keep;
+}
+function renderJobSelects() {
+  fillSel('lb_job', 'All jobs (overall score)', jobs.map(j => [j.id, '#' + j.id + ' ' + j.title]));
+  if (!lbReady && jobs.length) { $('lb_job').value = jobs[0].id; lbReady = true; }
+  fillSel('kb_job', 'All jobs', jobs.map(j => [j.id, '#' + j.id + ' ' + j.title]));
+  fillSel('tl_cand', 'All candidates', cands.map(c => [c.id, c.name]));
+}
+function viewHook(name = activeView()) {
+  if (!localStorage.getItem('access')) return;
+  if (name === 'rankings') loadLeaderboard(); else if (name === 'kanban') loadBoard(); else if (name === 'timeline') loadTimeline();
+}
+
+// job-wise leaderboard (GET /api/jobs/<id>/leaderboard/)
+async function loadLeaderboard() {
+  const id = $('lb_job').value;
+  if (!id) return renderRank();
+  const r = await api('/api/jobs/' + encodeURIComponent(id) + '/leaderboard/');
+  if ($('lb_job').value !== id) return;
+  const rows = r.ok ? (await readJson(r)).candidates || [] : [];
+  $('podium').innerHTML = rows.filter(x => x.rank).slice(0, 3).map(x => `<div class="box pod"><div style="font-size:30px">${medal(x.rank)}</div><h3 style="margin:6px 0 2px">${candLink(x.candidate_id, x.name)}</h3><small class="m">Rank #${esc(x.rank)}</small><div style="display:grid;place-items:center;margin-top:12px">${ring(x.score, 1)}</div></div>`).join('');
+  $('rank_list').innerHTML = !rows.length ? empty('Nobody has been run for this job yet. Use the Pipeline tab.') :
+    rows.map(x => `<div class="rw"><div style="width:34px;font-size:18px;text-align:center;flex:none">${x.rank ? medal(x.rank) : '–'}</div>${ring(x.score)}<div class="t"><b>${candLink(x.candidate_id, x.name)}</b>${x.interview_date ? `<small>Interview ${when(x.interview_date)}</small>` : ''}${x.fallback_used ? '<small>⚠️ rule-based fallback score</small>' : ''}<div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, x.score)}%"></i></div></div>${badge(x.status)}</div>`).join('');
+}
+
+// Kanban board (GET /api/applications/, PATCH /api/applications/<id>/status/)
+async function loadBoard() {
+  const job = $('kb_job').value;
+  const r = await api('/api/applications/' + (job ? '?job=' + encodeURIComponent(job) : ''));
+  if ($('kb_job').value !== job) return;
+  board = r.ok ? await readJson(r) : []; renderBoard();
+}
+function renderBoard() {
+  const card = a => `<div class="kcard" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${esc(a.id)}')"><div class="top"><div class="t" style="min-width:0">${candLink(a.candidate_id, a.candidate_name)}<small class="m">${esc(a.job_title)}</small></div>${a.score > 0 ? ring(a.score) : ''}</div>${a.fallback_used ? '<small class="m">⚠️ fallback score</small>' : ''}<select aria-label="Move to column" onchange="moveApp(${esc(a.id)}, this.value)">${COLS.map(([k, l]) => `<option value="${k}"${k === a.status ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
+  $('kb_cols').innerHTML = COLS.map(([k, l, col]) => {
+    const items = board.filter(a => a.status === k);
+    return `<div class="kcol" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="kbDrop(event,'${k}')"><div class="kh" style="border-top:3px solid ${col}"><b>${l}</b><span class="lbl">${items.length}</span></div><div class="kb">${items.map(card).join('') || '<div class="empty" style="padding:14px">Empty</div>'}</div></div>`;
+  }).join('');
+}
+function kbDrop(e, status) { e.preventDefault(); e.currentTarget.classList.remove('over'); const id = +e.dataTransfer.getData('text/plain'); if (id) moveApp(id, status); }
+async function moveApp(id, status) {
+  const a = board.find(x => x.id === id);
+  if (!a || a.status === status) return renderBoard();
+  const r = await api('/api/applications/' + id + '/status/', {method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status})});
+  if (!r.ok) { toast(errText(await readJson(r)), 'err'); return loadBoard(); }
+  a.status = status; renderBoard(); allLogs = []; loadLogs(); toast('Moved to ' + COLS.find(c => c[0] === status)[1]);
+}
+
+// agent timeline (GET /api/logs/, newest first)
+function timelineHtml(rows, showName) {
+  return rows.map(l => { const [ic, col] = AGENTS[l.from_agent] || ['🤖', 'var(--muted)'];
+    return `<div class="ti"><span class="td" style="border-color:${col}">${ic}</span><div class="tb"><b>${esc(l.from_agent)}</b> → ${esc(l.to_agent)}${showName ? ' · ' + candLink(l.candidate_id, l.candidate__name) : ''}<small>${when(l.timestamp)}</small><p>${esc(l.message)}</p></div></div>`; }).join('');
+}
+async function loadTimeline() { allLogs = await load('/api/logs/'); renderTimeline(); }
+function renderTimeline() {
+  const cid = $('tl_cand').value;
+  const rows = allLogs.filter(l => !cid || String(l.candidate_id) === cid).slice().reverse();
+  $('tl_list').innerHTML = !rows.length ? empty('No agent activity yet. Run the pipeline on a candidate.') :
+    timelineHtml(rows, !cid) + '<div class="hint">Shows the latest 200 events.</div>';
+}
+
+// candidate detail page (GET /api/candidates/<id>/detail/)
+function breakdownHtml(b) {
+  if (!b) return '';
+  return `<div style="margin-top:10px">${[['Skills', b.skills], ['Experience', b.experience], ['Education', b.education]].filter(([, v]) => v !== undefined && v !== null).map(([l, v]) => `<div class="fun" style="grid-template-columns:90px 1fr 34px"><span>${l}</span><div class="bar"><i style="width:${Math.min(100, Number(v) || 0)}%"></i></div><b>${esc(v)}</b></div>`).join('')}</div>`;
+}
+function evidenceHtml(ev) {
+  return (ev || []).length ? `<div style="margin-top:10px"><b>Evidence from the resume</b>${ev.map(e => `<small style="display:block;margin-top:6px">“${esc(e.quote)}” <span class="chip">${esc(e.section)}</span> ${esc(e.supports)}</small>`).join('')}</div>` : '';
+}
+function goRun(id) { $('p_cand').value = id; show('pipeline'); }
+async function openCandidate(id) {
+  const cur = activeView(); if (cur !== 'candidate') cdBack = cur;
+  cdId = id; show('candidate'); $('cd_box').innerHTML = empty('Loading…');
+  const r = await api('/api/candidates/' + encodeURIComponent(id) + '/detail/');
+  if (cdId !== id) return;
+  if (!r.ok) { $('cd_box').innerHTML = `<button type="button" class="btn s sec" onclick="show(cdBack)">← Back</button>` + empty(esc(errText(await readJson(r)))); return; }
+  renderCandidate(await r.json());
+}
+function renderCandidate(d) {
+  const c = d.candidate;
+  const apps = d.applications.length ? d.applications.map(a => `<div class="bd" style="border-bottom:1px solid var(--line2)"><div class="rw" style="padding:0">${ring(a.score)}<div class="t"><b>${esc(a.job_title)}</b> <small class="m" style="display:inline">#${esc(a.job_id)}</small><small>${when(a.updated_at)}</small></div>${badge(a.status)}</div>${a.reason ? `<p style="margin:10px 0 0">${esc(a.reason)}</p>` : ''}${breakdownHtml(a.breakdown)}${evidenceHtml(a.evidence)}${a.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}</div>`).join('')
+    : empty('Not run against any job yet.');
+  $('cd_box').innerHTML = `<button type="button" class="btn s sec" onclick="show(cdBack)">← Back</button>
+  <div class="grid two" style="margin-top:16px"><div class="grid">
+    <div class="box"><h2>Profile</h2><div class="bd">
+      <div class="rw" style="padding:0 0 14px"><span class="av" style="width:56px;height:56px;font-size:20px">${ini(c.name)}</span><div class="t"><b style="font-size:18px">${esc(c.name)}</b><small>${esc(c.email)}</small><small>${esc(c.phone)}</small></div>${badge(c.status)}</div>
+      <small class="m">${esc(c.experience)} years of experience · added ${when(c.created_at)}</small>${chips(c.skills, 40)}
+      ${c.interview_date ? `<p style="margin:12px 0 0"><b>Interview:</b> ${when(c.interview_date)}</p>` : ''}
+      <button type="button" class="btn s" style="margin-top:14px" onclick="goRun(${esc(c.id)})">🚀 Run pipeline</button></div></div>
+    <div class="box"><h2>Resume</h2><div class="bd"><div class="resume">${esc(c.resume_text)}</div></div></div>
+  </div><div class="grid">
+    <div class="box"><h2>Applications (${d.applications.length})</h2>${apps}</div>
+    <div class="box"><h2>Agent timeline</h2><div class="bd">${d.logs.length ? timelineHtml(d.logs.slice().reverse(), false) : empty('No agent activity yet.')}</div></div>
+  </div></div>`;
+}
+
 // start
 function start() {
   const u = localStorage.getItem('username') || '';
@@ -781,7 +919,7 @@ function start() {
   $('demo_banner').style.display = isDemo() ? 'flex' : 'none'; loadProfile();
   refresh(); loadLogs();
 }
-window.onload = () => { show(location.hash.slice(1) || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };
+window.onload = () => { const h0 = location.hash.slice(1); show(h0 === 'candidate' ? 'candidates' : h0 || 'overview'); localStorage.getItem('access') ? start() : showLogin(); };
 </script>
 </body>
 </html>

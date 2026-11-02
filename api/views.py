@@ -188,7 +188,7 @@ def get_jobs(request):
 @api_view(['GET'])
 def get_logs(request):
     latest = AgentLog.objects.filter(candidate__owner=request.user).order_by('-id').values(
-        'from_agent', 'to_agent', 'message', 'timestamp', 'candidate__name'
+        'from_agent', 'to_agent', 'message', 'timestamp', 'candidate__name', 'candidate_id'
     )[:200]
     return Response(list(latest)[::-1])      # oldest first, like before
 
