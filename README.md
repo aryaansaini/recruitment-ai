@@ -64,13 +64,13 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 - **Job-wise leaderboard.** Pick a job and see everyone who applied, ranked (ties share a rank), with a podium for the top three. "All jobs" keeps the overall score ranking.
 - **Candidate detail page.** Click any candidate name to see the profile, the full resume text, every application with its score breakdown, verified resume quotes and AI reason, and that candidate's own agent timeline.
 - **Kanban board.** Applications grouped by stage (pending, shortlisted, matched, ranked, interview, rejected), filterable by job. Move a card by drag and drop or with the menu on the card (works on touch screens). Moves are saved and written to the activity log as "Recruiter".
-- **Agent timeline.** A vertical timeline of every hand-off between the agents, newest first, filterable by candidate.
+- **Agent timeline.** A vertical timeline of every hand-off between the agents, including the resume searches the LLM agents ran, newest first, filterable by candidate.
 
 **CV Match**
 - Upload a CV and see which of *your* jobs it is eligible for, with matched and missing skills per job. Nothing is saved. See [CV Match](#cv-match).
 
 **Evidence-based screening**
-- A four-stage pipeline run by a **Google ADK `SequentialAgent`**: screening, job matching, ranking and interview scheduling. Candidates that fail screening or matching are rejected and do not continue to scheduling.
+- A four-stage pipeline run by a **Google ADK `SequentialAgent`** of `LlmAgent`s that call tools themselves: screening, job matching, ranking and interview scheduling. Candidates that fail screening or matching are rejected and do not continue to scheduling.
 - **Per-job ranking.** Candidates are ranked only against others who applied to the same job (ties share a rank). `GET /api/jobs/<id>/leaderboard/` returns the full ranked list for a job.
 - Every score comes with a breakdown (skills, experience, education) and **verified quotes from the resume**.
 - Every agent hand-off is written to an activity log that is shown on the dashboard.
@@ -149,9 +149,25 @@ flowchart LR
 - **Auditable.** Every hand-off is logged, and every result that did not come from the AI model is flagged.
 - **Fail-safe.** If the model is unavailable, a rule-based fallback keeps the pipeline running instead of failing silently or inventing results.
 
-**How ADK is used.** The four agents are ADK `BaseAgent` subclasses (`api/adk_pipeline.py`) coordinated by a `SequentialAgent`. Each one runs the project's own tested logic from `api/agents.py` and writes what it decided to the ADK session state. Agents 3 and 4 skip themselves for candidates who did not qualify. They are custom agents rather than `LlmAgent`s on purpose: agents 1 and 2 keep using the project's own Gemini client, which gives verified resume quotes, fixed score weights and a clearly flagged rule-based fallback. Set `PIPELINE_USE_ADK=False` to run the same four steps as plain Python functions.
+**How ADK is used.** The pipeline is an ADK `SequentialAgent` of four agents. `PIPELINE_AGENT_MODE` picks one of two engines:
 
-`api/adk_agents.py` also contains a small `LlmAgent` (a skill extractor with structured output), and `api/adk_tools.py` exposes retrieval and scoring as ADK tools. These are used by the management commands and tests; the pipeline itself uses the custom agents above.
+- **`llm` (the default, needs `GEMINI_API_KEY`).** Four `LlmAgent`s (`api/adk_pipeline_llm.py`) that call tools themselves:
+
+| Agent | Tools it calls |
+|---|---|
+| Resume Screening | `get_job_requirements`, `search_resume_chunks` (retrieval: a few focused queries of its own), `score_and_save_candidate` (scoring) |
+| Job Matching | `get_job_requirements`, `get_candidate_profile`, `record_match_decision` (the agent makes the decision itself) |
+| Candidate Ranking | `get_job_leaderboard`, `rank_candidate` |
+| Interview Scheduling | `propose_interview_slot` |
+
+  The model chooses which tools to call, in what order and with which search queries, and the resume parts it searched for are added to the evidence the scoring step sees. It cannot choose *which* candidate or job: the tools are bound to the one run and take no ids. Scores, the shortlist rule, statuses and ranks are still computed by the project's own code, so the model cannot set them. A candidate who was rejected at screening skips matching, ranking and scheduling without any model call.
+- **`deterministic`.** Fixed ADK agents (`api/adk_pipeline.py`) that run the same steps without extra model calls. Used automatically when there is no `GEMINI_API_KEY`, and always while the tests run.
+
+**Activity log from ADK callbacks.** In both engines the log is written by ADK callbacks and never by the model: `after_tool_callback` (the resume searches and any failed tool), `after_agent_callback` (the hand-off line of each agent), and `on_model_error_callback` / `before_model_callback` (model failures and the time budget). With `PIPELINE_USE_ADK=False` the plain functions write the same hand-off lines directly.
+
+**When the model cannot be used.** A model error, a used-up time budget (`PIPELINE_LLM_BUDGET_SECONDS`, 45 seconds), an agent that skips its tool, or even an ADK crash is handled by the callbacks: the built-in step finishes the work, the reason is logged once, and results that did not come from the model are flagged. A run always completes.
+
+`api/adk_agents.py` also contains a small `LlmAgent` (a skill extractor with structured output), and `api/adk_tools.py` exposes retrieval and scoring as ADK tools that take explicit ids. These are used by the management commands and tests.
 
 ---
 
@@ -232,7 +248,7 @@ flowchart LR
   Embed --> DB[("Neon Postgres<br/>with pgvector")]
   API --> Search["Semantic search"]
   Search --> DB
-  API --> ADK["Google ADK<br/>SequentialAgent, 4 agents"]
+  API --> ADK["Google ADK<br/>SequentialAgent, 4 LlmAgents + tools"]
   ADK --> RAG["RAG scoring<br/>verified evidence"]
   RAG --> DB
   RAG --> LLM["Gemini<br/>structured output"]
@@ -250,7 +266,7 @@ The four pipeline agents are described in [Multi-agent pipeline](#multi-agent-pi
 | Backend | Django 5.2, Django REST Framework, SimpleJWT, django-cors-headers |
 | Database | PostgreSQL on Neon with `pgvector` (SQLite as a local fallback) |
 | AI | Google Gemini via `google-genai` (default model `gemini-2.5-flash`), `gemini-embedding-001` embeddings |
-| Agents | Google ADK (`google-adk`): a `SequentialAgent` running four custom agents, plus an `LlmAgent` and retrieval / scoring tools |
+| Agents | Google ADK (`google-adk`): a `SequentialAgent` of four tool-calling `LlmAgent`s (or fixed agents without a key), with callbacks that write the activity log |
 | Email | Django mail: console backend locally, HTTPS Brevo backend in production |
 | Parsing | `pdfplumber`, `python-docx` |
 | Frontend | Single-page UI in `templates/index.html` (vanilla JavaScript, light and dark themes, responsive) |
@@ -317,6 +333,8 @@ Set these in `.env` locally, or in your host's environment settings in productio
 | `CSRF_TRUSTED_ORIGINS` | Comma-separated origins for the admin login over HTTPS |
 | `NUM_PROXIES` | Proxies in front of Django (default `1`), so per-IP limits use the real client address |
 | `PIPELINE_USE_ADK` | `True` (default) runs the agents in an ADK `SequentialAgent`; `False` runs plain functions |
+| `PIPELINE_AGENT_MODE` | `llm` (default): LlmAgents call tools themselves, needs `GEMINI_API_KEY`. `deterministic`: fixed agents, no extra model calls |
+| `PIPELINE_LLM_BUDGET_SECONDS` | Time the LLM agents may keep calling the model in one run (default 45); after that the built-in steps finish |
 | `SIGNUPS_ENABLED` | `False` closes registration (default `True`) |
 | `SIGNUP_INVITE_CODE` | If set, sign-up needs this invite code |
 | `MAX_SIGNUPS_PER_DAY` | All new accounts together per 24 hours (default 30) |
@@ -380,7 +398,7 @@ All endpoints except those under "Public" require a JWT (`Authorization: Bearer 
 python manage.py test
 ```
 
-The suite (257 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, token revocation, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
+The suite (288 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, token revocation, the LlmAgent pipeline, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
 
 ---
 
@@ -414,7 +432,8 @@ api/
   views.py, auth_views.py   REST endpoints
   urls.py, serializers.py, throttles.py, admin.py, health.py
   agents.py                 the four pipeline steps and run_full_pipeline
-  adk_pipeline.py           ADK SequentialAgent that runs the four agents
+  adk_pipeline.py           ADK SequentialAgent of four fixed agents, PipelineRun, log callback
+  adk_pipeline_llm.py       the four LlmAgents, their tools and the logging / fallback callbacks
   ranking.py, leaderboard.py   per-job competition ranking and leaderboard endpoint
   board_views.py            candidate detail, Kanban applications and status moves
   cv_matching.py, cv_views.py  CV Match logic and endpoint
@@ -437,7 +456,8 @@ api/
 
 These are documented so the project's current scope is clear:
 
-- The four ADK agents are custom `BaseAgent`s that call the project's own Python and Gemini code. They are not `LlmAgent`s that decide on their own which tool to call.
+- The LLM engine makes about 14 model calls for a candidate who qualifies (one per tool call plus a closing sentence per agent) and about 5 for one who is rejected, on top of the scoring call and the resume-search embeddings. A free Gemini tier can run out; set `PIPELINE_AGENT_MODE=deterministic` to avoid the extra calls.
+- The LLM agents are covered by tests that replace Gemini with a scripted model (real ADK runner, tools and database), and their failure handling was also checked against the real Gemini client without network. How well a live model follows the tool instructions depends on Gemini, so watch the Agent timeline after the first runs.
 - **There are no real MCP servers.** `ats_mcp_update`, `calendar_mcp` and `resume_parser_mcp` in `api/agents.py` are ordinary Python functions that stand in for them. There is no MCP protocol and no agent-to-agent protocol in this repository yet.
 - Moving a Kanban card changes the status of that **application** (one candidate and one job) only. The candidate-level status shown on the dashboard is the result of the latest pipeline run and is not changed by a manual move.
 - The agent log is stored per candidate, not per job, so the timeline cannot tell which job a hand-off belonged to.
@@ -451,10 +471,6 @@ These are documented so the project's current scope is clear:
 ## Roadmap
 
 Change `[ ]` to `[x]` as items are completed.
-
-**Agents**
-- [ ] Turn the ADK agents into `LlmAgent`s that call the retrieval and scoring tools themselves
-- [ ] Agent activity log written from ADK callbacks
 
 **Integrations**
 - [ ] Real MCP servers (official MCP SDK) for ATS, resume parsing and calendar
@@ -472,6 +488,8 @@ Change `[ ]` to `[x]` as items are completed.
 - [x] Sign in with username or email
 - [x] Password reset signs the account out everywhere (old access and refresh tokens stop working)
 - [x] Four agents orchestrated by an ADK `SequentialAgent`, with tests using a stub LLM
+- [x] The agents are `LlmAgent`s that call the retrieval and scoring tools themselves, with a fallback to the built-in steps
+- [x] Agent activity log written from ADK callbacks
 - [x] Per-job ranking and job leaderboard API
 - [x] CV Match tab and endpoint
 - [x] Job-wise leaderboard page, candidate detail page, Kanban board and agent timeline

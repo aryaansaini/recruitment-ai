@@ -80,6 +80,25 @@ def retrieve_evidence(candidate, job, k: int = TOP_K) -> dict:
     return {'mode': mode, 'chunks': items}
 
 
+MAX_EVIDENCE_CHUNKS = 10
+
+
+def merge_chunks(evidence: dict, extra: list, limit: int = MAX_EVIDENCE_CHUNKS) -> dict:
+    """Add chunks an agent searched for to the scoring evidence (no duplicates, at most `limit` in total).
+
+    The id-0 pseudo chunk (whole resume, used when a candidate has no chunks) is never added.
+    """
+    chunks = list(evidence.get('chunks', []))
+    seen = {c['chunk_id'] for c in chunks}
+    for chunk in extra or []:
+        if len(chunks) >= limit:
+            break
+        if chunk['chunk_id'] and chunk['chunk_id'] not in seen:
+            chunks.append(chunk)
+            seen.add(chunk['chunk_id'])
+    return {**evidence, 'chunks': chunks}
+
+
 # --------------------------------------------------------------------------
 # Prompt
 # --------------------------------------------------------------------------

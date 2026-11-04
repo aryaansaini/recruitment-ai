@@ -4,9 +4,10 @@ Each agent is a small ADK agent (a BaseAgent subclass) that runs the project's e
 logic from `api.agents`. An ADK `SequentialAgent` runs them in order, and the ADK session records
 what each agent decided. Agents 3 and 4 skip themselves for candidates who did not qualify.
 
-Why custom agents and not LlmAgents: agents 1 and 2 keep using the project's own Gemini client,
-which gives verified resume quotes, fixed score weights and a clearly flagged rule-based fallback.
+These fixed agents make no extra model calls. `api/adk_pipeline_llm.py` has the LlmAgent version, in which
+the agents decide for themselves which tools to call. Both write the activity log from ADK callbacks.
 """
+import time
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator
 
@@ -29,6 +30,37 @@ class PipelineRun:
     qualified: bool = False
     slot: dict | None = None
     session_state: dict = field(default_factory=dict)
+    done: set = field(default_factory=set)                  # steps that have run: screening, matching, ...
+    results: dict = field(default_factory=dict)             # what each step's tool returned
+    extra_chunks: list = field(default_factory=list)        # resume parts the screening agent searched for
+    pending_logs: list = field(default_factory=list)        # (from, to, message) waiting for an ADK callback
+    llm_failed: bool = False                                # the model is unavailable: stop calling it
+    started_at: float = field(default_factory=time.monotonic)
+
+    def emit(self, from_agent, to_agent, message):
+        """Used by the pipeline steps instead of writing to the database: the ADK callbacks write the log."""
+        self.pending_logs.append((from_agent, to_agent, message))
+
+    def write_pending_logs(self):
+        """Write the queued hand-offs as AgentLog rows (sync: call it through sync_to_async)."""
+        from .models import AgentLog
+        pending, self.pending_logs = self.pending_logs, []
+        for from_agent, to_agent, message in pending:
+            AgentLog.objects.create(candidate=self.candidate, from_agent=from_agent, to_agent=to_agent,
+                                    message=message)
+
+    def write_log(self, from_agent, to_agent, message):
+        """Write one entry right now (sync). Used for tool calls and errors."""
+        from .models import AgentLog
+        AgentLog.objects.create(candidate=self.candidate, from_agent=from_agent, to_agent=to_agent,
+                                message=message[:2000])
+
+
+def flush_logs_callback(run: PipelineRun):
+    """after_agent_callback of the fixed agents: the hand-off log is written here, not inside the step."""
+    async def after_agent(callback_context):
+        await sync_to_async(run.write_pending_logs)()
+    return after_agent
 
 
 class _PipelineStep(BaseAgent):
@@ -53,7 +85,7 @@ class _PipelineStep(BaseAgent):
 class ScreeningAgent(_PipelineStep):
     def work(self):
         run = self.pipeline
-        run.candidate = pipeline_steps.resume_screening_agent(run.candidate, run.job)
+        run.candidate = pipeline_steps.resume_screening_agent(run.candidate, run.job, emit=run.emit)
         c = run.candidate
         return (f'Screened {c.name}: score {c.score}, status {c.status}',
                 {'screening_done': True, 'score': float(c.score), 'status': c.status})
@@ -62,7 +94,7 @@ class ScreeningAgent(_PipelineStep):
 class MatchingAgent(_PipelineStep):
     def work(self):
         run = self.pipeline
-        run.qualified = bool(pipeline_steps.job_matching_agent(run.candidate, run.job))
+        run.qualified = bool(pipeline_steps.job_matching_agent(run.candidate, run.job, emit=run.emit))
         verdict = 'matched' if run.qualified else 'not matched'
         return (f'Matching: {run.candidate.name} {verdict}',
                 {'matching_done': True, 'qualified': run.qualified})
@@ -73,7 +105,7 @@ class RankingAgent(_PipelineStep):
         run = self.pipeline
         if not run.qualified:
             return ('Ranking skipped: candidate did not qualify.', {'ranking_skipped': True})
-        pipeline_steps.candidate_ranking_agent([run.candidate], job=run.job)
+        pipeline_steps.candidate_ranking_agent([run.candidate], job=run.job, emit=run.emit)
         return (f'Ranked {run.candidate.name} for {run.job.title}', {'ranking_done': True})
 
 
@@ -82,22 +114,23 @@ class SchedulingAgent(_PipelineStep):
         run = self.pipeline
         if not run.qualified:
             return ('Scheduling skipped: candidate did not qualify.', {'scheduling_skipped': True})
-        run.slot = pipeline_steps.interview_coordination_agent(run.candidate)
+        run.slot = pipeline_steps.interview_coordination_agent(run.candidate, emit=run.emit)
         return (f"Interview proposed for {run.slot['slot']}", {'scheduling_done': True})
 
 
 def build_pipeline(run: PipelineRun) -> SequentialAgent:
+    flush = flush_logs_callback(run)
     return SequentialAgent(
         name='recruitment_pipeline',
         description='Screening, job matching, ranking and interview scheduling for one candidate and one job.',
         sub_agents=[
-            ScreeningAgent(name='screening_agent', pipeline=run,
+            ScreeningAgent(name='screening_agent', pipeline=run, after_agent_callback=flush,
                            description='Scores the resume against the job using verified resume evidence.'),
-            MatchingAgent(name='matching_agent', pipeline=run,
+            MatchingAgent(name='matching_agent', pipeline=run, after_agent_callback=flush,
                           description='Checks the candidate against the hard requirements of the job.'),
-            RankingAgent(name='ranking_agent', pipeline=run,
+            RankingAgent(name='ranking_agent', pipeline=run, after_agent_callback=flush,
                          description='Ranks the candidate among everyone qualified for the job.'),
-            SchedulingAgent(name='scheduling_agent', pipeline=run,
+            SchedulingAgent(name='scheduling_agent', pipeline=run, after_agent_callback=flush,
                             description='Proposes an interview time slot.'),
         ],
     )
