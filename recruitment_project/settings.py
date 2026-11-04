@@ -215,6 +215,11 @@ EMAIL_OTP_REQUIRED = False if RUNNING_TESTS else os.environ.get('EMAIL_OTP_REQUI
 # True  = the four agents run inside a Google ADK SequentialAgent.
 # False = the same agents run as plain Python functions.
 PIPELINE_USE_ADK = os.environ.get('PIPELINE_USE_ADK', 'True') == 'True'
+# 'llm': the four agents are ADK LlmAgents that call tools themselves (needs GEMINI_API_KEY, uses more
+# model calls). 'deterministic': fixed ADK agents. Tests always use 'deterministic' unless a test opts in.
+PIPELINE_AGENT_MODE = 'deterministic' if RUNNING_TESTS else os.environ.get('PIPELINE_AGENT_MODE', 'llm').strip().lower()
+# After this many seconds the LLM agents stop calling the model and the built-in steps finish the run.
+PIPELINE_LLM_BUDGET_SECONDS = int(os.environ.get('PIPELINE_LLM_BUDGET_SECONDS', '45'))
 
 
 # ---------- Sign in with username OR email ----------
