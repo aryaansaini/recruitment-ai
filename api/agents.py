@@ -69,14 +69,27 @@ def _rule_based_match(candidate, job):
     return percent >= 50 and candidate.experience >= job.min_experience, round(percent)
 
 
+def _db_emit(candidate):
+    """Default activity-log writer: one AgentLog row per call. The ADK pipelines pass their own `emit`
+    instead, so that their ADK callbacks write the log."""
+    from api.models import AgentLog
+
+    def emit(from_agent, to_agent, message):
+        AgentLog.objects.create(candidate=candidate, from_agent=from_agent, to_agent=to_agent, message=message)
+    return emit
+
+
 # ============================================
 # AGENT 1: Resume Screening Agent (RAG: scores from the resume parts that match the job)
 # ============================================
-def resume_screening_agent(candidate, job):
-    from api.models import AgentLog
+def resume_screening_agent(candidate, job, extra_chunks=None, emit=None):
+    """`extra_chunks`: resume parts an LLM agent searched for itself; they are added to the evidence."""
+    emit = emit or _db_emit(candidate)
     print(f"[Agent 1] Resume Screening: {candidate.name} for {job.title}")
 
     evidence = rag.retrieve_evidence(candidate, job)      # never raises; may fall back (see card['retrieval'])
+    if extra_chunks:
+        evidence = rag.merge_chunks(evidence, extra_chunks)
     try:
         card = rag.score_candidate(candidate, job, llm=generate_structured, evidence=evidence)
         score, reason, fallback = card['overall'], card['summary'], False
@@ -102,12 +115,8 @@ def resume_screening_agent(candidate, job):
         result_status = 'rejected'
 
     cited = f" [{len(candidate.ai_evidence)} verified quotes, retrieval={candidate.ai_retrieval}]"
-    AgentLog.objects.create(
-        candidate=candidate,
-        from_agent='Resume Screening Agent',
-        to_agent='Job Matching Agent',
-        message=f"{'FALLBACK ' if fallback else 'AI '}Score: {score}, Status: {result_status}. {reason}{cited}"
-    )
+    emit('Resume Screening Agent', 'Job Matching Agent',
+         f"{'FALLBACK ' if fallback else 'AI '}Score: {score}, Status: {result_status}. {reason}{cited}")
 
     print(f"[Agent 1] Done. Score={score}, Status={result_status}, fallback={fallback}")
     return candidate
@@ -116,8 +125,10 @@ def resume_screening_agent(candidate, job):
 # ============================================
 # AGENT 2: Job Matching Agent (Gemini, structured output)
 # ============================================
-def job_matching_agent(candidate, job):
-    from api.models import AgentLog
+def job_matching_agent(candidate, job, decision=None, emit=None):
+    """`decision`: (is_match, percent, reason) already made by an LLM agent. Without it, Gemini is asked
+    here, with the rule-based fallback."""
+    emit = emit or _db_emit(candidate)
     print(f"[Agent 2] Job Matching: {candidate.name} <-> {job.title}")
 
     if candidate.status == 'rejected':
@@ -132,23 +143,22 @@ Minimum experience: {job.min_experience} years
 Candidate skills: {candidate.skills}
 Candidate experience: {candidate.experience} years"""
 
-    try:
-        result = generate_structured(prompt, MatchResult)
-        is_match, percent, match_reason = result.is_match, result.match_percent, result.reason
-    except LLMError as exc:
-        logger.warning('Matching: AI failed, using rule-based fallback (%s)', exc)
-        is_match, percent = _rule_based_match(candidate, job)
-        match_reason = 'AI unavailable: rule-based skill overlap.'
-        candidate.fallback_used = True
+    if decision is not None:
+        is_match, percent, match_reason = decision
+    else:
+        try:
+            result = generate_structured(prompt, MatchResult)
+            is_match, percent, match_reason = result.is_match, result.match_percent, result.reason
+        except LLMError as exc:
+            logger.warning('Matching: AI failed, using rule-based fallback (%s)', exc)
+            is_match, percent = _rule_based_match(candidate, job)
+            match_reason = 'AI unavailable: rule-based skill overlap.'
+            candidate.fallback_used = True
 
     candidate.ai_reason = f"{getattr(candidate, 'ai_reason', '')} Match {percent}%: {match_reason}".strip()
 
-    AgentLog.objects.create(
-        candidate=candidate,
-        from_agent='Job Matching Agent',
-        to_agent='Candidate Ranking Agent',
-        message=f"{'Matched' if is_match else 'Not Matched'} ({percent}%). {match_reason}"
-    )
+    emit('Job Matching Agent', 'Candidate Ranking Agent',
+         f"{'Matched' if is_match else 'Not Matched'} ({percent}%). {match_reason}")
 
     if is_match:
         ats_mcp_update(candidate, 'matched')
@@ -162,10 +172,10 @@ Candidate experience: {candidate.experience} years"""
 # AGENT 3: Candidate Ranking Agent
 # ============================================
 
-def candidate_ranking_agent(candidates, job=None):
+def candidate_ranking_agent(candidates, job=None, emit=None):
     """Rank candidates. With `job`, each one is ranked against everyone already
     qualified for that job (stored applications), not only against this batch."""
-    from api.models import AgentLog, Application
+    from api.models import Application
     print(f"[Agent 3] Ranking {len(candidates)} candidates")
 
     ranked = sorted(candidates, key=lambda c: c.score, reverse=True)
@@ -185,12 +195,8 @@ def candidate_ranking_agent(candidates, job=None):
         if job is not None:
             message += f" (of {len(all_scores)} qualified for {job.title})"
         ats_mcp_update(candidate, 'ranked')
-        AgentLog.objects.create(
-            candidate=candidate,
-            from_agent='Candidate Ranking Agent',
-            to_agent='Interview Coordination Agent',
-            message=message,
-        )
+        candidate.pipeline_rank = rank                    # transient, read by the ADK ranking tool
+        (emit or _db_emit(candidate))('Candidate Ranking Agent', 'Interview Coordination Agent', message)
         print(f"[Agent 3] Rank #{rank}: {candidate.name}")
 
     return ranked
@@ -198,8 +204,8 @@ def candidate_ranking_agent(candidates, job=None):
 # ============================================
 # AGENT 4: Interview Coordination Agent
 # ============================================
-def interview_coordination_agent(candidate):
-    from api.models import AgentLog
+def interview_coordination_agent(candidate, emit=None):
+    emit = emit or _db_emit(candidate)
     print(f"[Agent 4] Scheduling interview: {candidate.name}")
 
     slot = calendar_mcp(candidate.name)
@@ -207,12 +213,8 @@ def interview_coordination_agent(candidate):
     candidate.interview_date = slot['datetime']
     ats_mcp_update(candidate, 'interview_scheduled')
 
-    AgentLog.objects.create(
-        candidate=candidate,
-        from_agent='Interview Coordination Agent',
-        to_agent='Recruiter Dashboard',
-        message=f"Interview on {slot['slot']} via {slot['platform']}"
-    )
+    emit('Interview Coordination Agent', 'Recruiter Dashboard',
+         f"Interview on {slot['slot']} via {slot['platform']}")
 
     print(f"[Agent 4] Done. Slot: {slot['slot']}")
     return {k: v for k, v in slot.items() if k != 'datetime'}   # JSON-safe
@@ -232,8 +234,12 @@ def run_full_pipeline(candidate_id, job_id):
 
     if getattr(settings, 'PIPELINE_USE_ADK', True):
         # the four agents run as Google ADK agents inside a SequentialAgent
-        from api.adk_pipeline import run_adk_pipeline
-        outcome = run_adk_pipeline(candidate, job)
+        if getattr(settings, 'PIPELINE_AGENT_MODE', 'deterministic') == 'llm' and settings.GEMINI_API_KEY:
+            from api.adk_pipeline_llm import run_llm_pipeline      # LlmAgents that call tools themselves
+            outcome = run_llm_pipeline(candidate, job)
+        else:
+            from api.adk_pipeline import run_adk_pipeline          # fixed agents, no extra model calls
+            outcome = run_adk_pipeline(candidate, job)
         candidate, slot = outcome.candidate, outcome.slot
     else:
         candidate = resume_screening_agent(candidate, job)
