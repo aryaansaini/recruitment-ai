@@ -17,6 +17,7 @@ from .models import AgentLog, Candidate, Job
 from .leaderboard import job_leaderboard
 
 from .resume_parser import (
+    MAX_RESUME_BYTES,
     ALLOWED_EXTENSIONS,
     ResumeParseError,
     UnsupportedResumeType,
@@ -44,7 +45,6 @@ from .throttles import (
 
 logger = logging.getLogger(__name__)
 
-MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 # Homepage (public: it only serves the HTML shell; all data comes from protected APIs)

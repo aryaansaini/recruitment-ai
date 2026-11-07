@@ -220,6 +220,10 @@ PIPELINE_USE_ADK = os.environ.get('PIPELINE_USE_ADK', 'True') == 'True'
 PIPELINE_AGENT_MODE = 'deterministic' if RUNNING_TESTS else os.environ.get('PIPELINE_AGENT_MODE', 'llm').strip().lower()
 # After this many seconds the LLM agents stop calling the model and the built-in steps finish the run.
 PIPELINE_LLM_BUDGET_SECONDS = int(os.environ.get('PIPELINE_LLM_BUDGET_SECONDS', '45'))
+# True: the pipeline's ATS, calendar and resume-parser calls go through the MCP servers in api/mcp_servers/
+# (each call starts the server as a child process). False: the same logic runs in-process. Off in tests.
+USE_MCP = False if RUNNING_TESTS else os.environ.get('USE_MCP', 'False') == 'True'
+MCP_TIMEOUT_SECONDS = int(os.environ.get('MCP_TIMEOUT_SECONDS', '30'))
 
 
 # ---------- Sign in with username OR email ----------

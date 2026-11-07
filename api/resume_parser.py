@@ -10,6 +10,7 @@ MAX_PDF_PAGES = 20               # resumes are short; protects against huge PDFs
 MAX_DOCX_UNCOMPRESSED = 50 * 1024 * 1024   # zip-bomb protection
 
 ALLOWED_EXTENSIONS = ('.pdf', '.docx', '.txt')
+MAX_RESUME_BYTES = 5 * 1024 * 1024   # same limit as the upload API and the resume parser MCP server
 
 
 class ResumeParseError(Exception):
@@ -301,3 +302,16 @@ def chunk_resume(text: str, max_chars: int = 700, overlap: int = 80) -> list:
             if index >= MAX_CHUNKS:
                 return chunks
     return chunks
+
+
+# --------------------------------------------------------------------------
+# 3. Quick keyword summary (used by the rule-based fallback and the resume parser MCP server)
+# --------------------------------------------------------------------------
+TECH_KEYWORDS = ('python', 'django', 'sql', 'react', 'javascript', 'java', 'html', 'css', 'machine learning', 'ai')
+
+
+def keyword_summary(text: str) -> dict:
+    """Word count and which of a few common tech keywords appear (a single word, as before)."""
+    words = text.lower().split()
+    found = [k for k in TECH_KEYWORDS if k in words]
+    return {'word_count': len(words), 'keywords_found': found, 'keyword_count': len(found)}

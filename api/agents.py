@@ -13,24 +13,40 @@ SHORTLIST_THRESHOLD = 50
 
 
 # ============================================
-# MCP Server 3: Resume Parser MCP
+# The three MCP servers (api/mcp_servers/) and what runs when they are not used
 # ============================================
+def _via_mcp(server, tool, arguments, owner_id=None):
+    """(True, value) from an MCP server, or (False, None) when MCP is switched off (USE_MCP) or the server
+    cannot be used, so the caller does the same work in-process. A tool that refuses the request raises."""
+    from django.conf import settings
+    if not getattr(settings, 'USE_MCP', False):
+        return False, None
+    from api import mcp_client
+    try:
+        return True, mcp_client.call_tool(server, tool, arguments, owner_id=owner_id)
+    except mcp_client.McpToolError:
+        raise
+    except mcp_client.McpError as exc:
+        logger.warning('MCP server %s unavailable, doing %s in-process (%s)', server, tool, exc)
+        return False, None
+
+
+# MCP Server 3: Resume Parser
 def resume_parser_mcp(resume_text):
-    words = resume_text.lower().split()
-    tech_keywords = ['python', 'django', 'sql', 'react', 'javascript',
-                     'java', 'html', 'css', 'machine learning', 'ai']
-    found = [k for k in tech_keywords if k in words]
-    return {
-        'word_count': len(words),
-        'keywords_found': found,
-        'keyword_count': len(found)
-    }
+    used, parsed = _via_mcp('resume_parser', 'analyze_resume', {'text': resume_text})
+    if used:
+        return parsed
+    from api.resume_parser import keyword_summary
+    return keyword_summary(resume_text)
 
 
-# ============================================
-# MCP Server 2: Calendar MCP
-# ============================================
-def calendar_mcp(candidate_name):
+# MCP Server 2: Calendar
+def calendar_mcp(candidate_name, owner_id=None):
+    if owner_id is not None:
+        used, slot = _via_mcp('calendar', 'propose_interview_slot', {'candidate_name': candidate_name}, owner_id)
+        if used:
+            from django.utils.dateparse import parse_datetime
+            return {**slot, 'datetime': parse_datetime(slot['datetime'])}
     interview_time = (timezone.now() + timedelta(days=3)).replace(second=0, microsecond=0)
     return {
         'candidate': candidate_name,
@@ -41,10 +57,17 @@ def calendar_mcp(candidate_name):
     }
 
 
-# ============================================
-# MCP Server 1: ATS MCP
-# ============================================
+# MCP Server 1: ATS
 def ats_mcp_update(candidate, status):
+    """Record the candidate's status together with the score and interview time the pipeline has set."""
+    if candidate.owner_id is not None:
+        arguments = {'candidate_id': candidate.pk, 'status': status, 'score': candidate.score}
+        if candidate.interview_date:
+            arguments['interview_date'] = candidate.interview_date.isoformat()
+        used, message = _via_mcp('ats', 'update_candidate_status', arguments, candidate.owner_id)
+        if used:
+            candidate.status = status          # the server has saved it; keep this object in step
+            return message
     candidate.status = status
     candidate.save()
     return f"ATS Updated: {candidate.name} -> {status}"
@@ -208,7 +231,7 @@ def interview_coordination_agent(candidate, emit=None):
     emit = emit or _db_emit(candidate)
     print(f"[Agent 4] Scheduling interview: {candidate.name}")
 
-    slot = calendar_mcp(candidate.name)
+    slot = calendar_mcp(candidate.name, owner_id=candidate.owner_id)
 
     candidate.interview_date = slot['datetime']
     ats_mcp_update(candidate, 'interview_scheduled')

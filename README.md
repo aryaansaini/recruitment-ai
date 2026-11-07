@@ -22,9 +22,7 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 
 ![Email OTP](https://img.shields.io/badge/Email%20OTP-sign--up%20%26%20password%20reset-0A7EA4)
 
-<!-- Add this badge only after real MCP servers are built (see Roadmap):
 ![MCP](https://img.shields.io/badge/MCP-servers-000000)
--->
 
 ---
 
@@ -33,6 +31,7 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Multi-agent pipeline](#multi-agent-pipeline)
+- [MCP servers](#mcp-servers)
 - [How scoring works](#how-scoring-works)
 - [CV Match](#cv-match)
 - [Authentication, email OTP and password reset](#authentication-email-otp-and-password-reset)
@@ -65,6 +64,9 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 - **Candidate detail page.** Click any candidate name to see the profile, the full resume text, every application with its score breakdown, verified resume quotes and AI reason, and that candidate's own agent timeline.
 - **Kanban board.** Applications grouped by stage (pending, shortlisted, matched, ranked, interview, rejected), filterable by job. Move a card by drag and drop or with the menu on the card (works on touch screens). Moves are saved and written to the activity log as "Recruiter".
 - **Agent timeline.** A vertical timeline of every hand-off between the agents, including the resume searches the LLM agents ran, newest first, filterable by candidate.
+
+**MCP servers**
+- Three real MCP servers built with the official MCP Python SDK: **ATS**, **resume parser** and **calendar**. Any MCP client can use them over stdio, and the pipeline can send its ATS, calendar and parser calls through them (`USE_MCP`). See [MCP servers](#mcp-servers).
 
 **CV Match**
 - Upload a CV and see which of *your* jobs it is eligible for, with matched and missing skills per job. Nothing is saved. See [CV Match](#cv-match).
@@ -171,6 +173,37 @@ flowchart LR
 
 ---
 
+## MCP servers
+
+Three [MCP](https://modelcontextprotocol.io) servers, written with the official `mcp` Python SDK (`FastMCP`), live in `api/mcp_servers/`:
+
+| Server | Tools | Works for |
+|---|---|---|
+| **ATS** (`ats_server`) | `update_candidate_status(candidate_id, status, score?, interview_date?)`, `get_candidate(candidate_id)`, `list_candidates(status?, limit?)` | one recruiter |
+| **Resume parser** (`resume_parser_server`) | `extract_resume_text(filename, content_base64)`, `analyze_resume(text)`, `chunk_resume_text(text, max_chars?)` | nobody in particular, no database |
+| **Calendar** (`calendar_server`) | `propose_interview_slot(candidate_name)`, `find_free_slots(count?, days_ahead?)`, `list_booked_slots(days_ahead?)` | one recruiter |
+
+Start one over stdio from the project folder (same environment variables as the app, for example `DATABASE_URL`):
+
+```bash
+python -m api.mcp_servers.resume_parser_server
+MCP_OWNER_ID=3 python -m api.mcp_servers.ats_server        # PowerShell: $env:MCP_OWNER_ID=3
+MCP_OWNER_ID=3 python -m api.mcp_servers.calendar_server
+```
+
+Any MCP client that can start a stdio server can use them: command `python`, arguments `-m api.mcp_servers.<server>`, working directory the project folder, and `MCP_OWNER_ID` in its environment.
+
+**One recruiter per server.** The ATS and calendar servers refuse to start without `MCP_OWNER_ID` and only ever see that recruiter's candidates, the same isolation the API enforces. Another recruiter's candidate is "not found", also for a guessed id.
+
+**What the tools do**
+- `update_candidate_status` saves the status together with the score and interview time the pipeline has set, and validates all three. `get_candidate` does not return the resume text, only a character count.
+- `analyze_resume` returns the word count, the common tech keywords found, and the first email and phone number. `extract_resume_text` takes a PDF, DOCX or TXT file (base64, at most 5 MB) and returns clean text.
+- `propose_interview_slot` is the slot the pipeline always used (three days from now, with a meeting link). `find_free_slots` gives the next free weekday slots between 10:00 and 16:00 (UTC) and skips times that already have an interview; `list_booked_slots` lists scheduled interviews. The calendar server is **not** connected to Google Calendar: it works on the interview times stored in the app.
+
+**In the pipeline.** With `USE_MCP=True`, the pipeline's ATS updates, interview slot and resume keyword summary go through these servers (`api/mcp_client.py`) instead of running in-process, for the fixed agents, the LlmAgents and the plain functions alike. Each call starts the server as a child process, runs one tool and shuts it down, which costs roughly one second per call (about five calls per run, so about four seconds more). If a server cannot be started or times out, the step is done in-process and a warning is logged. If a tool refuses a request (for example an unknown status) the error is raised, not hidden. It is off by default.
+
+---
+
 ## How scoring works
 
 1. **Retrieve.** For the candidate being screened, the top semantically relevant resume chunks (plus the education chunk) are retrieved. If embeddings are unavailable, the pipeline falls back to keyword retrieval or the full resume, and records which mode was used.
@@ -253,6 +286,7 @@ flowchart LR
   RAG --> DB
   RAG --> LLM["Gemini<br/>structured output"]
   API --> Mail["Email: console or Brevo<br/>sign-up OTP, password reset"]
+  API -.-> MCP["MCP servers (stdio)<br/>ATS, resume parser, calendar"]
 ```
 
 The four pipeline agents are described in [Multi-agent pipeline](#multi-agent-pipeline); the sign-up and reset flows in [Authentication](#authentication-email-otp-and-password-reset).
@@ -267,6 +301,7 @@ The four pipeline agents are described in [Multi-agent pipeline](#multi-agent-pi
 | Database | PostgreSQL on Neon with `pgvector` (SQLite as a local fallback) |
 | AI | Google Gemini via `google-genai` (default model `gemini-2.5-flash`), `gemini-embedding-001` embeddings |
 | Agents | Google ADK (`google-adk`): a `SequentialAgent` of four tool-calling `LlmAgent`s (or fixed agents without a key), with callbacks that write the activity log |
+| MCP | Official MCP Python SDK (`mcp` 1.x, `FastMCP`): ATS, resume parser and calendar servers over stdio |
 | Email | Django mail: console backend locally, HTTPS Brevo backend in production |
 | Parsing | `pdfplumber`, `python-docx` |
 | Frontend | Single-page UI in `templates/index.html` (vanilla JavaScript, light and dark themes, responsive) |
@@ -334,6 +369,8 @@ Set these in `.env` locally, or in your host's environment settings in productio
 | `NUM_PROXIES` | Proxies in front of Django (default `1`), so per-IP limits use the real client address |
 | `PIPELINE_USE_ADK` | `True` (default) runs the agents in an ADK `SequentialAgent`; `False` runs plain functions |
 | `PIPELINE_AGENT_MODE` | `llm` (default): LlmAgents call tools themselves, needs `GEMINI_API_KEY`. `deterministic`: fixed agents, no extra model calls |
+| `USE_MCP` | `True` sends the pipeline's ATS, calendar and resume-parser calls through the MCP servers (default `False`) |
+| `MCP_TIMEOUT_SECONDS` | How long one MCP call may take before the step falls back to in-process (default 30) |
 | `PIPELINE_LLM_BUDGET_SECONDS` | Time the LLM agents may keep calling the model in one run (default 45); after that the built-in steps finish |
 | `SIGNUPS_ENABLED` | `False` closes registration (default `True`) |
 | `SIGNUP_INVITE_CODE` | If set, sign-up needs this invite code |
@@ -398,7 +435,7 @@ All endpoints except those under "Public" require a JWT (`Authorization: Bearer 
 python manage.py test
 ```
 
-The suite (288 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, token revocation, the LlmAgent pipeline, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
+The suite (336 tests at the time of writing) covers authentication, email OTP, forgot password, Brevo delivery, token revocation, the LlmAgent pipeline, the MCP servers, per-recruiter isolation, demo workspaces, rate limits, resume parsing, embeddings, semantic search, RAG scoring, ranking, CV Match and the ADK pipeline. LLM-dependent logic is tested with stubs and mocks. Tests always run against SQLite and never touch your Neon database. GitHub Actions runs the Django check, a missing-migrations check, the suite and a Docker build on every push and pull request.
 
 ---
 
@@ -444,6 +481,8 @@ api/
   rag.py                    retrieval, prompt building, evidence verification, scoring
   services.py               chunk rebuilding and shared helpers
   adk_utils.py, adk_agents.py, adk_tools.py    Google ADK foundation
+  mcp_servers/              the ATS, resume parser and calendar MCP servers (`python -m api.mcp_servers.<name>`)
+  mcp_client.py             starts a server over stdio, calls one tool, maps failures
   brevo_backend.py          email backend over HTTPS (Brevo)
   management/commands/      check_db, embed_chunks, rag_demo, adk_hello, seed_demo, send_test_email
   migrations/
@@ -458,7 +497,9 @@ These are documented so the project's current scope is clear:
 
 - The LLM engine makes about 14 model calls for a candidate who qualifies (one per tool call plus a closing sentence per agent) and about 5 for one who is rejected, on top of the scoring call and the resume-search embeddings. A free Gemini tier can run out; set `PIPELINE_AGENT_MODE=deterministic` to avoid the extra calls.
 - The LLM agents are covered by tests that replace Gemini with a scripted model (real ADK runner, tools and database), and their failure handling was also checked against the real Gemini client without network. How well a live model follows the tool instructions depends on Gemini, so watch the Agent timeline after the first runs.
-- **There are no real MCP servers.** `ats_mcp_update`, `calendar_mcp` and `resume_parser_mcp` in `api/agents.py` are ordinary Python functions that stand in for them. There is no MCP protocol and no agent-to-agent protocol in this repository yet.
+- The MCP servers are real (official SDK, stdio) but the ADK agents do not reach them through ADK's `McpToolset` yet. The pipeline's own steps call them through a plain MCP client, and only when `USE_MCP=True`. Every call starts a new server process (about one second), so MCP mode is slower. There is no agent-to-agent protocol.
+- `propose_interview_slot` does not avoid booked times (use `find_free_slots` for that).
+- Resume keywords are counted as whole space-separated words, so "SQL," with a comma is not counted. This is how the keyword summary always worked.
 - Moving a Kanban card changes the status of that **application** (one candidate and one job) only. The candidate-level status shown on the dashboard is the result of the latest pipeline run and is not changed by a manual move.
 - The agent log is stored per candidate, not per job, so the timeline cannot tell which job a hand-off belonged to.
 - Interview scheduling proposes a time slot three days ahead. It does **not** integrate with a real calendar and does not send invitations. The meeting link in the result is generated text, not a real meeting.
@@ -473,7 +514,6 @@ These are documented so the project's current scope is clear:
 Change `[ ]` to `[x]` as items are completed.
 
 **Integrations**
-- [ ] Real MCP servers (official MCP SDK) for ATS, resume parsing and calendar
 - [ ] Agents connected to the MCP servers through ADK's `McpToolset`
 - [ ] Interview scheduling with slot logic and `.ics` invitations
 
@@ -492,6 +532,7 @@ Change `[ ]` to `[x]` as items are completed.
 - [x] Agent activity log written from ADK callbacks
 - [x] Per-job ranking and job leaderboard API
 - [x] CV Match tab and endpoint
+- [x] Real MCP servers (official MCP SDK) for ATS, resume parsing and calendar, optionally used by the pipeline
 - [x] Job-wise leaderboard page, candidate detail page, Kanban board and agent timeline
 - [x] Dockerfile, GitHub Actions (checks, tests, Docker build), seed command, Render + Neon + UptimeRobot deployment
 
