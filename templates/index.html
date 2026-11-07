@@ -404,9 +404,11 @@ html,body{margin:0;min-width:320px;max-width:100%;overflow-x:hidden}
         <label class="drop" id="cv_drop"><input type="file" id="cv_file" accept=".pdf,.docx,.txt" hidden>
           <b>Drop a CV here or click to browse</b><small class="m">PDF, DOCX or TXT, max 5 MB. This does not add a candidate.</small></label>
         <div class="hint" id="cv_msg" aria-live="polite"></div>
-        <label class="f">Years of experience</label><input id="cv_exp" type="number" min="0" value="0" inputmode="numeric">
+        <label class="f">Candidate name</label><input id="cv_name" autocomplete="name" placeholder="Full name">
+        <div class="row"><div><label class="f">Email</label><input id="cv_email" type="email" autocomplete="email" placeholder="name@example.com"></div><div><label class="f">Phone</label><input id="cv_phone" type="tel" autocomplete="tel" placeholder="Phone number"></div></div>
+        <label class="f">Years of experience</label><input id="cv_exp" type="number" min="0" max="60" value="0" inputmode="numeric">
         <button class="btn full" onclick="matchCv(this)">Find matching jobs</button>
-        <p class="hint">The CV is compared with every job you created: required skills and minimum experience.</p></div>
+        <p class="hint">Upload a CV, confirm the candidate details, and compare it with your jobs. Select a suitable job to create the candidate and run all four existing agents.</p></div>
       </div>
       <div class="box"><h2>Matching jobs</h2><div id="cv_results"><div class="empty">Upload a CV to see which jobs it fits.</div></div></div>
     </div>
@@ -659,12 +661,17 @@ const addCandidate = btn => busy(btn, async () => {
   await refresh(); $('p_cand').value = d.id; toast(`Candidate added ✅ (${d.chunks} resume chunks)`);
 });
 function setSteps(done, on, skipFrom = 9) { document.querySelectorAll('.step').forEach((s, i) => s.className = 'step' + (i < done ? ' done' : i === on ? ' on' : '') + (i >= skipFrom ? ' skip' : '')); }
-const runPipeline = btn => busy(btn, async () => {
-  if (!$('p_cand').value || !$('p_job').value) return toast('Pick a candidate and a job first.', 'err');
-  let k = 0; setSteps(0, 0); const timer = setInterval(() => { k = Math.min(k + 1, 3); setSteps(k, k); }, 900); $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
-  const res = await jsonPost('/api/run-pipeline/', {candidate_id: $('p_cand').value, job_id: $('p_job').value});
-  clearInterval(timer); const d = await readJson(res);
-  if (!res.ok) { setSteps(0, -1); return toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); }
+async function executePipeline(candidateId, jobId) {
+  let k = 0; setSteps(0, 0); const timer = setInterval(() => { k = Math.min(k + 1, 3); setSteps(k, k); }, 900);
+  $('p_result').innerHTML = '<div class="empty">Agents are working…</div>';
+  let res, d;
+  try {
+    res = await jsonPost('/api/run-pipeline/', {candidate_id: candidateId, job_id: jobId});
+    d = await readJson(res);
+  } finally {
+    clearInterval(timer);
+  }
+  if (!res.ok) { setSteps(0, -1); toast(res.status === 429 ? 'Too many runs. Wait a minute.' : res.status === 404 ? 'Candidate or job not found.' : errText(d), 'err'); return; }
   const ran = d.interview_slot ? 4 : 2; setSteps(ran, -1, ran);
   $('p_result').innerHTML = `<div class="res"><div class="rw" style="padding:0 0 12px">${ring(d.score)}<div class="t"><b>${esc(d.name)}</b><small>Score ${esc(d.score)}/100${d.rank ? ' · Rank #' + esc(d.rank) : ''}</small></div>${badge(d.status)}</div>
     <p style="margin:12px 0 0"><b>AI reason:</b> ${esc(d.reason)}</p>
@@ -674,6 +681,10 @@ const runPipeline = btn => busy(btn, async () => {
     ${d.fallback_used ? '<div class="warnbox">⚠️ AI was unavailable, so this result used the rule-based fallback.</div>' : ''}
     <p style="margin:12px 0 0"><b>Interview:</b> ${d.interview_slot ? esc(d.interview_slot.slot + ' via ' + d.interview_slot.platform) : 'Not scheduled (rejected)'}</p></div>`;
   await refresh(); loadLogs(); toast('Pipeline complete ✅');
+}
+const runPipeline = btn => busy(btn, async () => {
+  if (!$('p_cand').value || !$('p_job').value) return toast('Pick a candidate and a job first.', 'err');
+  await executePipeline($('p_cand').value, $('p_job').value);
 });
 
 // demo / delete / account
@@ -723,33 +734,60 @@ window.addEventListener('pagehide', () => {
   if (t) fetch('/api/auth/demo/end/', {method: 'POST', keepalive: true, headers: {Authorization: 'Bearer ' + t}});
 });
 
-// CV -> jobs
+// CV -> ranked jobs -> existing four-agent pipeline
 let cvData = null;
+let cvCandidateId = null;
 async function cvRead(file) {
   if (!file) return;
   if (!/\.(pdf|docx|txt)$/i.test(file.name)) { $('cv_msg').textContent = '⚠️ Only PDF, DOCX or TXT files are supported.'; return; }
   $('cv_msg').textContent = '⏳ Reading CV…'; $('cv_results').innerHTML = empty('Upload a CV to see which jobs it fits.');
   const fd = new FormData(); fd.append('resume', file);
   const res = await api('/api/parse-resume/', {method: 'POST', body: fd}); const d = await readJson(res);
-  if (!res.ok) { cvData = null; $('cv_msg').textContent = '⚠️ ' + errText(d); return; }
+  if (!res.ok) { cvData = null; cvCandidateId = null; $('cv_msg').textContent = '⚠️ ' + errText(d); return; }
   cvData = {text: d.text || '', skills: d.skills || []};
+  cvCandidateId = null;
+  $('cv_email').value = d.email || '';
+  $('cv_phone').value = d.phone || '';
   const years = [...cvData.text.matchAll(/(\d{1,2})\s*\+?\s*(?:years?|yrs?)/gi)].map(m => +m[1]).filter(n => n <= 40);
   if (years.length) $('cv_exp').value = Math.max(...years);
-  $('cv_msg').textContent = `✅ Read "${file.name}": ${cvData.skills.length} skills found. Experience is a guess from the CV (${$('cv_exp').value} years), please check it, then press the button.`;
+  $('cv_msg').textContent = `✅ Read "${file.name}": ${cvData.skills.length} skills found. Please confirm the contact details and experience before matching.`;
 }
 function renderCv(d) {
   const label = {eligible: 'Eligible', partial: 'Partial match', not_a_match: 'Not a match'};
   const cls = {eligible: 'interview_scheduled', partial: 'matched', not_a_match: 'rejected'};
   if (!d.jobs.length) { $('cv_results').innerHTML = empty('You have no jobs yet. Create a job first, then match a CV.'); return; }
-  const head = `<div class="rw"><div class="t"><b>Eligible for ${esc(d.eligible_count)} of ${esc(d.total_jobs)} jobs</b><small>Based on required skills and minimum experience.</small></div></div>`;
-  $('cv_results').innerHTML = head + d.jobs.map(j => `<div class="rw">${ring(j.score)}<div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small>${j.matched_skills.length ? chips(j.matched_skills.join(','), 8) : ''}<small>${j.missing_skills.length ? 'Missing: ' + esc(j.missing_skills.join(', ')) : 'All required skills found'} · needs ${esc(j.min_experience)}+ yrs${j.experience_ok ? '' : ' (CV is below this)'}</small></div><span class="lbl ${cls[j.verdict]}">${label[j.verdict]}</span></div>`).join('');
+  const head = `<div class="rw"><div class="t"><b>Eligible for ${esc(d.eligible_count)} of ${esc(d.total_jobs)} jobs</b><small>Jobs are ranked by skills and experience match. Select Eligible or Partial match to run the agents.</small></div></div>`;
+  $('cv_results').innerHTML = head + d.jobs.map(j => `<div class="rw" style="align-items:flex-start"><div style="padding-top:4px">${ring(j.score)}</div><div class="t"><b>${esc(j.title)}</b> <small class="m" style="display:inline">#${esc(j.id)}</small><small>${esc(j.description || '')}</small>${j.required_skills ? `<small>Required: ${esc(j.required_skills)}</small>` : ''}${j.matched_skills.length ? chips(j.matched_skills.join(','), 8) : ''}<small>${j.missing_skills.length ? 'Missing: ' + esc(j.missing_skills.join(', ')) : 'All required skills found'} · needs ${esc(j.min_experience)}+ yrs${j.experience_ok ? '' : ' (CV is below this)'}</small><button class="btn s ${j.verdict === 'not_a_match' ? 'sec' : ''}" style="margin-top:8px" ${j.verdict === 'not_a_match' ? 'disabled' : ''} onclick="runCvJob(${Number(j.id)}, this)">${j.verdict === 'not_a_match' ? 'Not suitable' : 'Run agents for this job'}</button></div><span class="lbl ${cls[j.verdict]}">${label[j.verdict]}</span></div>`).join('');
 }
 const matchCv = btn => busy(btn, async () => {
   if (!cvData) return toast('Upload a CV first.', 'err');
+  if (!$('cv_name').value.trim() || !$('cv_email').value.trim() || !$('cv_phone').value.trim()) return toast('Enter candidate name, email and phone before matching.', 'err');
   const res = await jsonPost('/api/match-cv/', {skills: cvData.skills, experience: $('cv_exp').value, resume_text: cvData.text});
   const d = await readJson(res); if (!res.ok) return toast(errText(d), 'err');
   renderCv(d);
 });
+async function runCvJob(jobId, btn) {
+  return busy(btn, async () => {
+    if (!cvData) return toast('Upload a CV first.', 'err');
+    if (!$('cv_name').value.trim() || !$('cv_email').value.trim() || !$('cv_phone').value.trim()) return toast('Enter candidate name, email and phone first.', 'err');
+    if (!cvCandidateId) {
+      $('cv_msg').textContent = '⏳ Saving candidate and indexing resume…';
+      const create = await jsonPost('/api/add-candidate/', {
+        name: $('cv_name').value.trim(), email: $('cv_email').value.trim(), phone: $('cv_phone').value.trim(),
+        skills: cvData.skills.join(', '), experience: $('cv_exp').value, resume_text: cvData.text
+      });
+      const created = await readJson(create);
+      if (!create.ok) { $('cv_msg').textContent = '⚠️ ' + errText(created); return toast(errText(created), 'err'); }
+      cvCandidateId = created.id;
+      $('cv_msg').textContent = `✅ Candidate saved. Resume indexed in ${created.chunks} sections.`;
+      await refresh();
+    }
+    $('p_cand').value = String(cvCandidateId);
+    $('p_job').value = String(jobId);
+    show('pipeline');
+    await executePipeline(cvCandidateId, jobId);
+  });
+}
 $('cv_file').onchange = e => cvRead(e.target.files[0]);
 ['dragenter', 'dragover'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => $('cv_drop').addEventListener(ev, e => { e.preventDefault(); $('cv_drop').classList.remove('over'); }));

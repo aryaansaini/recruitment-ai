@@ -68,8 +68,10 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 **MCP servers**
 - Three real MCP servers built with the official MCP Python SDK: **ATS**, **resume parser** and **calendar**. Any MCP client can use them over stdio, and the pipeline can send its ATS, calendar and parser calls through them (`USE_MCP`). See [MCP servers](#mcp-servers).
 
-**CV Match**
-- Upload a CV and see which of *your* jobs it is eligible for, with matched and missing skills per job. Nothing is saved. See [CV Match](#cv-match).
+**CV Match → Agent workflow**
+- Upload a CV, confirm the candidate's name and contact details, and see your jobs ranked by skill and experience fit.
+- Each eligible or partial-match job has a **Run agents for this job** action. Selecting it saves the candidate and resume, then runs the existing four-agent pipeline for that specific job.
+- The pipeline result, activity log, application record and proposed interview are shown in the existing workspace. See [CV Match](#cv-match).
 
 **Evidence-based screening**
 - A four-stage pipeline run by a **Google ADK `SequentialAgent`** of `LlmAgent`s that call tools themselves: screening, job matching, ranking and interview scheduling. Candidates that fail screening or matching are rejected and do not continue to scheduling.
@@ -221,9 +223,11 @@ Any MCP client that can start a stdio server can use them: command `python`, arg
 
 ## CV Match
 
-`POST /api/match-cv/` answers "which of my jobs is this CV eligible for?". The UI has a **CV Match** tab where you upload a CV (PDF, DOCX or TXT); it is parsed with `/api/parse-resume/` and then matched against the recruiter's own jobs. Nothing is saved.
+`POST /api/match-cv/` answers "which of my jobs is this CV eligible for?". The **CV Match** tab parses an uploaded PDF, DOCX or TXT resume with `/api/parse-resume/`, then compares it with the logged-in recruiter's own jobs. This initial shortlist is deterministic (no AI call, no quota used); it includes the job description and required skills.
 
-For every job the result contains a score, a verdict, the matched and missing skills and whether the experience requirement is met. Matching is deterministic (no AI call, no quota used):
+When the recruiter selects an eligible or partial-match job, the UI creates the candidate using the confirmed name, email, phone and experience, stores the resume, and calls the existing `/api/run-pipeline/` endpoint. The four existing agents then screen, match, rank and propose an interview for that selected job. The saved candidate can be reused for another job; each pipeline run resets the candidate's working status so a rejection for one role does not block evaluation for another role.
+
+For every job the initial shortlist contains a score, a verdict, the matched and missing skills and whether the experience requirement is met. Matching is deterministic (no AI call, no quota used):
 
 - A required skill counts as matched if it is in the CV's skill list or appears as a **whole word** in the resume text (so `java` does not match `javascript`, and `c` does not match `c++`).
 - **eligible**: at least 50% of the required skills and enough years of experience. **partial**: at least 30% of the skills. Otherwise **not_a_match**.
@@ -424,7 +428,7 @@ All endpoints except those under "Public" require a JWT (`Authorization: Bearer 
 | GET | `/api/candidates/<id>/detail/` | Profile, resume text, applications (with evidence) and agent timeline of one candidate |
 | GET | `/api/applications/?job=<id>` | Applications for the Kanban board (all your jobs, or one) |
 | PATCH | `/api/applications/<id>/status/` | Move an application to another stage (`{"status": "rejected"}`) |
-| POST | `/api/match-cv/` | Which of your jobs a CV is eligible for (nothing is saved) |
+| POST | `/api/match-cv/` | Rank your jobs against an uploaded CV (the shortlist itself does not save a candidate) |
 | GET | `/api/logs/` | Latest 200 agent hand-offs, oldest first (each entry includes `candidate_id`) |
 
 ---
@@ -532,6 +536,7 @@ Change `[ ]` to `[x]` as items are completed.
 - [x] Agent activity log written from ADK callbacks
 - [x] Per-job ranking and job leaderboard API
 - [x] CV Match tab and endpoint
+- [x] CV-to-job selection integrated with candidate creation and the existing four-agent pipeline
 - [x] Real MCP servers (official MCP SDK) for ATS, resume parsing and calendar, optionally used by the pipeline
 - [x] Job-wise leaderboard page, candidate detail page, Kanban board and agent timeline
 - [x] Dockerfile, GitHub Actions (checks, tests, Docker build), seed command, Render + Neon + UptimeRobot deployment

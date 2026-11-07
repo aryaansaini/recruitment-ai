@@ -54,7 +54,7 @@ class CvMatchEndpointTests(TestCase):
     def test_requires_login(self):
         self.assertEqual(self.client.post('/api/match-cv/', {}, format='json').status_code, 401)
 
-    def test_only_my_jobs_are_matched(self):
+    def test_only_my_jobs_are_matched_and_job_details_are_returned(self):
         self.client.force_authenticate(self.owner)
         r = self.client.post('/api/match-cv/', {'skills': ['python', 'django'], 'experience': 2}, format='json')
         self.assertEqual(r.status_code, 200)
@@ -62,6 +62,8 @@ class CvMatchEndpointTests(TestCase):
         self.assertEqual(data['total_jobs'], 1)
         self.assertEqual(data['eligible_count'], 1)
         self.assertEqual(data['jobs'][0]['title'], 'Backend')
+        self.assertEqual(data['jobs'][0]['required_skills'], 'Python, Django')
+        self.assertEqual(data['jobs'][0]['description'], 'd')
 
     def test_bad_input_is_rejected(self):
         self.client.force_authenticate(self.owner)

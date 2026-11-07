@@ -253,6 +253,12 @@ def run_full_pipeline(candidate_id, job_id):
     candidate = Candidate.objects.get(id=candidate_id)
     job = Job.objects.get(id=job_id)
 
+    # Candidate status is shared across applications. Reset the working state before
+    # evaluating another job so a rejection for one role cannot block the next role.
+    candidate.status = Candidate.Status.PENDING
+    candidate.interview_date = None
+    candidate.save(update_fields=['status', 'interview_date'])
+
     print("===== PIPELINE START =====")
 
     if getattr(settings, 'PIPELINE_USE_ADK', True):

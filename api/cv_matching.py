@@ -39,6 +39,8 @@ def match_job(job, cv_skills, text_lower, experience):
     return {
         'id': job['id'],
         'title': job['title'],
+        'description': job.get('description', ''),
+        'required_skills': job.get('required_skills', ''),
         'score': round(0.7 * skill_percent + 0.3 * experience_score),
         'verdict': verdict,
         'skill_percent': skill_percent,

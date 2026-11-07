@@ -21,7 +21,7 @@ def match_cv_view(request):
     serializer = CvMatchSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
-    jobs = list(Job.objects.filter(owner=request.user).values('id', 'title', 'required_skills', 'min_experience'))
+    jobs = list(Job.objects.filter(owner=request.user).values('id', 'title', 'required_skills', 'min_experience', 'description'))
     results = rank_jobs(jobs, data['skills'], data['experience'], data['resume_text'])
     return Response({
         'eligible_count': sum(1 for r in results if r['verdict'] == 'eligible'),
