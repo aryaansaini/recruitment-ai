@@ -29,7 +29,6 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 ## Contents
 
 - [Features](#features)
-- [Screenshots](#screenshots)
 - [Multi-agent pipeline](#multi-agent-pipeline)
 - [MCP servers](#mcp-servers)
 - [How scoring works](#how-scoring-works)
@@ -98,25 +97,6 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 
 ---
 
-## Screenshots
-
-**Dashboard.** Hiring funnel, scheduled interviews and recent agent activity.
-
-![Dashboard](docs/dashboard.png)
-
-**Pipeline run.** Four agents screen, match, rank and schedule a candidate. The result shows the score breakdown and the quotes taken from the resume.
-
-![Pipeline result](docs/pipeline-result.png)
-
-**Semantic search.** Find candidates by meaning and see the matching resume passages.
-
-![Semantic search](docs/search.png)
-
-**Leaderboard and profile.**
-
-![Leaderboard](docs/leaderboard.png)
-
-![My Profile](docs/profile.png)
 
 **Sign-in and mobile.**
 
