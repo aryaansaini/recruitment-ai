@@ -12,7 +12,7 @@ from .views import _demo_blocked
 CANDIDATE_FIELDS = ('id', 'name', 'email', 'phone', 'skills', 'experience', 'resume_text',
                     'score', 'status', 'interview_date', 'created_at')
 APPLICATION_FIELDS = ('id', 'score', 'status', 'reason', 'fallback_used', 'breakdown',
-                      'evidence', 'interview_date', 'updated_at')
+                      'evidence', 'evaluation', 'interview_date', 'updated_at')
 
 
 @api_view(['GET'])

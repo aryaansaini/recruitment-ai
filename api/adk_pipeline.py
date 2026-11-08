@@ -19,6 +19,7 @@ from google.genai import types
 from typing_extensions import override
 
 from . import agents as pipeline_steps
+from . import tracking
 from .adk_utils import run_agent_sync
 
 
@@ -104,6 +105,7 @@ class RankingAgent(_PipelineStep):
     def work(self):
         run = self.pipeline
         if not run.qualified:
+            tracking.mark_skipped(run.candidate, 'ranking', 'Skipped: the candidate did not qualify.')
             return ('Ranking skipped: candidate did not qualify.', {'ranking_skipped': True})
         pipeline_steps.candidate_ranking_agent([run.candidate], job=run.job, emit=run.emit)
         return (f'Ranked {run.candidate.name} for {run.job.title}', {'ranking_done': True})
@@ -113,6 +115,7 @@ class SchedulingAgent(_PipelineStep):
     def work(self):
         run = self.pipeline
         if not run.qualified:
+            tracking.mark_skipped(run.candidate, 'scheduling', 'Skipped: the candidate did not qualify.')
             return ('Scheduling skipped: candidate did not qualify.', {'scheduling_skipped': True})
         run.slot = pipeline_steps.interview_coordination_agent(run.candidate, emit=run.emit)
         return (f"Interview proposed for {run.slot['slot']}", {'scheduling_done': True})

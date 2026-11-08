@@ -124,6 +124,34 @@ def extract_phone(text: str) -> str:
     return ''
 
 
+_NAME_STOP = re.compile(r'resume|curriculum|vitae|\bcv\b|profile|summary|objective|contact|http|www\.|@|\d|'
+                        r'engineer|developer|manager|analyst|designer|intern|student|experience|skills|education',
+                        re.IGNORECASE)
+
+
+def extract_name(text: str, filename: str = '') -> str:
+    """Best guess of the candidate's name: the first short, letters-only line at the top of the resume
+    (2 to 4 words), else the file name ('rahul_sharma_resume.pdf' -> 'Rahul Sharma'). '' if neither works."""
+    for line in [ln.strip() for ln in text.split('\n') if ln.strip()][:8]:
+        words = line.replace(',', ' ').split()
+        if 2 <= len(words) <= 4 and len(line) <= 40 and not _NAME_STOP.search(line) \
+                and all(re.fullmatch(r"[A-Za-z][A-Za-z.'-]*", w) for w in words):
+            return ' '.join(w.capitalize() if w.isupper() or w.islower() else w for w in words)
+    stem = re.sub(r'\.[A-Za-z0-9]+$', '', filename.rsplit('/', 1)[-1])
+    words = [w for w in re.split(r'[\s_.-]+', stem) if w and w.isalpha()
+             and w.lower() not in ('resume', 'cv', 'curriculum', 'vitae', 'final', 'new', 'updated')]
+    return ' '.join(w.capitalize() for w in words[:3]) if len(words) >= 2 else ''
+
+
+_YEARS_RE = re.compile(r'(\d{1,2})\s*\+?\s*(?:years?|yrs?)', re.IGNORECASE)
+
+
+def estimate_experience(text: str) -> int:
+    """The largest "N years" figure in the resume (ignoring absurd ones). 0 if none is stated."""
+    years = [int(m.group(1)) for m in _YEARS_RE.finditer(text) if int(m.group(1)) <= 40]
+    return max(years) if years else 0
+
+
 def parse_skill_list(skills_text: str, limit: int = 30) -> list:
     """'Languages: Python, Java\n- Django | SQL' -> ['Python', 'Java', 'Django', 'SQL']"""
     skills, seen = [], set()

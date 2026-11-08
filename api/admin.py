@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Candidate, Job, Application, AgentLog, ResumeChunk, RecruiterProfile
+from .models import (AgentLog, AgentStep, Application, Candidate, Interview, Job, PipelineExecution,
+                     RecruiterProfile, ResumeChunk)
 
 
 @admin.register(Candidate)
@@ -43,3 +44,23 @@ class ResumeChunkAdmin(admin.ModelAdmin):
 class RecruiterProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'phone', 'created_at')
     search_fields = ('user__username', 'phone')
+
+
+@admin.register(Interview)
+class InterviewAdmin(admin.ModelAdmin):
+    list_display = ('candidate', 'job', 'owner', 'scheduled_at', 'status')
+    list_filter = ('status',)
+
+
+class AgentStepInline(admin.TabularInline):
+    model = AgentStep
+    extra = 0
+    readonly_fields = ('key', 'label', 'status', 'started_at', 'finished_at', 'duration_ms', 'message', 'error')
+    can_delete = False
+
+
+@admin.register(PipelineExecution)
+class PipelineExecutionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'candidate', 'job', 'owner', 'status', 'created_at', 'finished_at')
+    list_filter = ('status',)
+    inlines = [AgentStepInline]

@@ -14,7 +14,7 @@ from .auth_views import DEMO_USERNAME
 from .embeddings import EmbeddingError
 from .models import AgentLog, Candidate, Job
 
-from .leaderboard import job_leaderboard
+from .pipeline_runs import build_result
 
 from .resume_parser import (
     MAX_RESUME_BYTES,
@@ -22,7 +22,9 @@ from .resume_parser import (
     ResumeParseError,
     UnsupportedResumeType,
     chunk_resume,
+    estimate_experience,
     extract_email,
+    extract_name,
     extract_phone,
     extract_text,
     parse_skill_list,
@@ -159,19 +161,7 @@ def run_pipeline(request):
     job = get_object_or_404(Job, pk=serializer.validated_data['job_id'], owner=request.user)
 
     candidate, slot = run_full_pipeline(candidate.id, job.id)
-    standing = next((r for r in job_leaderboard(job) if r['candidate_id'] == candidate.id), None)
-    return Response({
-        'name': candidate.name,
-        'status': candidate.status,
-        'score': candidate.score,
-        'reason': getattr(candidate, 'ai_reason', ''),
-        'fallback_used': getattr(candidate, 'fallback_used', False),
-        'breakdown': getattr(candidate, 'ai_breakdown', None),
-        'evidence': getattr(candidate, 'ai_evidence', []),
-        'retrieval': getattr(candidate, 'ai_retrieval', ''),
-        'interview_slot': slot,
-        'rank': standing['rank'] if standing else None,
-    })
+    return Response(build_result(candidate, job, slot))
 
 
 # ---------- Read (always only the logged-in recruiter's own data) ----------
@@ -223,8 +213,10 @@ def parse_resume(request):
     return Response({
         'text': text,
         'sections': [name for name in sections if name != 'header'],
+        'name': extract_name(text, resume_file.name),
         'email': extract_email(text),
         'phone': extract_phone(text),
+        'experience_years': estimate_experience(text),
         'skills': parse_skill_list(sections.get('skills', '')),
         'chunk_count': len(chunk_resume(text)),
     })

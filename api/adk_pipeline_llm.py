@@ -26,6 +26,7 @@ from google.genai import types
 
 from . import agents as steps
 from . import rag
+from . import tracking
 from .adk_pipeline import PipelineRun
 from .adk_utils import run_agent_sync
 from .ranking import QUALIFIED_STATUSES
@@ -315,8 +316,10 @@ def build_callbacks(run: PipelineRun, step: str) -> dict:
             if step == 'matching':
                 run.qualified = False
             run.done.add(step)
+            await sync_to_async(tracking.mark_skipped)(run.candidate, step, reason)
             _set_flags(ctx, run, step, skipped=True)
             return _text(reason)
+        await sync_to_async(tracking.mark_running)(run.candidate, step)     # live view: this agent has started
         if run.llm_failed:                           # the model is down: the built-in step does the work
             await sync_to_async(finish_step)(run, step)
             _set_flags(ctx, run, step)

@@ -22,7 +22,7 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import (
-    AgentLog, Application, Candidate, EmailOTP, Job, RecruiterProfile, ResumeChunk,
+    AgentLog, Application, Candidate, EmailOTP, Interview, Job, RecruiterProfile, ResumeChunk,
 )
 
 User = get_user_model()
@@ -279,9 +279,15 @@ def _clone_demo_data(user):
     with transaction.atomic():
         jobs = dict(clone(j, owner=user) for j in list(Job.objects.filter(owner=src)))
         cands = dict(clone(c, owner=user) for c in list(Candidate.objects.filter(owner=src)))
+        apps = {}
         for a in list(Application.objects.filter(candidate__owner=src)):
             if a.candidate_id in cands and a.job_id in jobs:
-                clone(a, candidate=cands[a.candidate_id], job=jobs[a.job_id])
+                old, new = clone(a, candidate=cands[a.candidate_id], job=jobs[a.job_id])
+                apps[old] = new
+        for iv in list(Interview.objects.filter(owner=src)):
+            if iv.application_id in apps:
+                clone(iv, owner=user, application=apps[iv.application_id], candidate=cands[iv.candidate_id],
+                      job=jobs[iv.job_id])
         chunks = []
         for ch in ResumeChunk.objects.filter(candidate__owner=src):
             if ch.candidate_id in cands:

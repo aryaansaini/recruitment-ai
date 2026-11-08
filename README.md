@@ -544,3 +544,14 @@ Change `[ ]` to `[x]` as items are completed.
 ---
 
 Built by [@aryaansaini](https://github.com/aryaansaini).
+
+
+## Phase 1 upgrades
+
+1. **Resume-to-agent automation** (CV Match tab): the matching jobs appear as soon as a CV is uploaded (name, email, phone and experience are read from the CV). Click a job and the candidate is saved and all four agents run automatically.
+2. **Live agent execution tracking**: `POST /api/pipeline-runs/start/` starts the agents in the background; `GET /api/pipeline-runs/<id>/` shows, for each agent, running / completed / failed / skipped, the time it took and the error. The Pipeline tab polls it. `PIPELINE_RUN_SYNC=True` runs inside the request instead (no worker thread).
+3. **Detailed AI evaluation** (`api/evaluation.py`): overall score, skill match with matched and missing skills, experience match, strengths, weaknesses and a final recommendation (strongly recommended / recommended / consider / not recommended). Stored in `Application.evaluation`, shown after a run and on the candidate page. No extra model call.
+4. **Interview management** (Interviews tab, `api/interviews.py`): calendar, free slots (weekdays 10:00-16:00 UTC), schedule, reschedule, cancel, complete, status, and e-mails to the candidate (copy to the recruiter) on every change. Conflicts are refused (409). Demo accounts never send e-mail; `INTERVIEW_EMAILS_ENABLED` and `INTERVIEW_EMAILS_PER_DAY` control it.
+5. **Analytics dashboard** (`GET /api/analytics/?job=<id>`): total candidates, shortlisted, rejected, interviews scheduled, funnel and hiring conversion, job-wise matching, score distribution, evaluations per day, most common missing skills and agent performance.
+
+Run `python manage.py migrate` (migration 0009 also creates Interview records for interviews that already exist).

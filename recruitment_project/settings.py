@@ -224,6 +224,15 @@ PIPELINE_LLM_BUDGET_SECONDS = int(os.environ.get('PIPELINE_LLM_BUDGET_SECONDS', 
 # (each call starts the server as a child process). False: the same logic runs in-process. Off in tests.
 USE_MCP = False if RUNNING_TESTS else os.environ.get('USE_MCP', 'False') == 'True'
 MCP_TIMEOUT_SECONDS = int(os.environ.get('MCP_TIMEOUT_SECONDS', '30'))
+# True: POST /api/pipeline-runs/start/ runs the agents inside the request (no worker thread). Tests always do.
+# False (default): the agents run in a background thread and the dashboard follows them live.
+PIPELINE_RUN_SYNC = True if RUNNING_TESTS else os.environ.get('PIPELINE_RUN_SYNC', 'False') == 'True'
+
+# ---------- Interview e-mails (scheduled / rescheduled / cancelled) ----------
+# The candidate (and the recruiter, when their account has an e-mail) is told about every change.
+# Demo accounts never send e-mail, and each recruiter is limited per day so nobody can use the app as a mail cannon.
+INTERVIEW_EMAILS_ENABLED = os.environ.get('INTERVIEW_EMAILS_ENABLED', 'True') == 'True'
+INTERVIEW_EMAILS_PER_DAY = int(os.environ.get('INTERVIEW_EMAILS_PER_DAY', '40'))
 
 
 # ---------- Sign in with username OR email ----------

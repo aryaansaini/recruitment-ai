@@ -6,6 +6,9 @@ from .health import healthz
 from . import cv_views
 from . import board_views
 from . import token_views
+from . import analytics
+from . import interview_views
+from . import pipeline_views
 
 urlpatterns = [
     path('healthz', healthz),
@@ -26,6 +29,22 @@ urlpatterns = [
     path('api/candidates/<int:pk>/detail/', board_views.candidate_detail),
     path('api/applications/', board_views.list_applications),
     path('api/applications/<int:pk>/status/', board_views.set_application_status),
+    path('api/applications/<int:pk>/interview/', interview_views.schedule_interview),
+
+    # live agent tracking
+    path('api/pipeline-runs/', pipeline_views.list_runs),
+    path('api/pipeline-runs/start/', pipeline_views.start_run),
+    path('api/pipeline-runs/<int:pk>/', pipeline_views.get_run),
+
+    # interview management
+    path('api/interviews/', interview_views.list_interviews),
+    path('api/interviews/slots/', interview_views.free_slots),
+    path('api/interviews/<int:pk>/', interview_views.reschedule_interview),
+    path('api/interviews/<int:pk>/cancel/', interview_views.cancel_interview),
+    path('api/interviews/<int:pk>/complete/', interview_views.complete_interview),
+
+    # analytics
+    path('api/analytics/', analytics.analytics),
     path('api/jobs/', views.get_jobs),
     path('api/jobs/<int:pk>/', views.delete_job),
     path('api/logs/', views.get_logs),

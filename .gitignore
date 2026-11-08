@@ -7,3 +7,4 @@ venv/
 .venv/
 media/
 .DS_Store
+* copy.py

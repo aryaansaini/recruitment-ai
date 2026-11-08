@@ -6,6 +6,7 @@ from django.utils import timezone
 from api import rag
 from api.llm import LLMError, MatchResult, generate_structured
 from api.ranking import QUALIFIED_STATUSES, competition_rank
+from api.tracking import tracked
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,14 @@ def _db_emit(candidate):
     return emit
 
 
+def _fallback_note(candidate):
+    return ' (rule-based fallback: AI unavailable)' if getattr(candidate, 'fallback_used', False) else ''
+
+
 # ============================================
 # AGENT 1: Resume Screening Agent (RAG: scores from the resume parts that match the job)
 # ============================================
+@tracked('screening', lambda c, r: f'Score {c.score}/100, {c.status}{_fallback_note(c)}')
 def resume_screening_agent(candidate, job, extra_chunks=None, emit=None):
     """`extra_chunks`: resume parts an LLM agent searched for itself; they are added to the evidence."""
     emit = emit or _db_emit(candidate)
@@ -129,6 +135,8 @@ def resume_screening_agent(candidate, job, extra_chunks=None, emit=None):
     candidate.ai_breakdown = card['breakdown'] if card else None
     candidate.ai_evidence = card['evidence'] if card else []
     candidate.ai_retrieval = card['retrieval'] if card else evidence['mode']
+    candidate.ai_strengths = card.get('strengths', []) if card else []       # used by the detailed evaluation
+    candidate.ai_gaps = card.get('gaps', []) if card else []
 
     if score >= SHORTLIST_THRESHOLD:
         ats_mcp_update(candidate, 'shortlisted')
@@ -148,6 +156,7 @@ def resume_screening_agent(candidate, job, extra_chunks=None, emit=None):
 # ============================================
 # AGENT 2: Job Matching Agent (Gemini, structured output)
 # ============================================
+@tracked('matching', lambda c, r: ('Matched' if r else 'Not matched') + _fallback_note(c))
 def job_matching_agent(candidate, job, decision=None, emit=None):
     """`decision`: (is_match, percent, reason) already made by an LLM agent. Without it, Gemini is asked
     here, with the rule-based fallback."""
@@ -195,6 +204,7 @@ Candidate experience: {candidate.experience} years"""
 # AGENT 3: Candidate Ranking Agent
 # ============================================
 
+@tracked('ranking', lambda c, r: f"Rank #{getattr(c, 'pipeline_rank', '?')}")
 def candidate_ranking_agent(candidates, job=None, emit=None):
     """Rank candidates. With `job`, each one is ranked against everyone already
     qualified for that job (stored applications), not only against this batch."""
@@ -227,6 +237,7 @@ def candidate_ranking_agent(candidates, job=None, emit=None):
 # ============================================
 # AGENT 4: Interview Coordination Agent
 # ============================================
+@tracked('scheduling', lambda c, r: f"Interview {r['slot']} via {r['platform']}")
 def interview_coordination_agent(candidate, emit=None):
     emit = emit or _db_emit(candidate)
     print(f"[Agent 4] Scheduling interview: {candidate.name}")
@@ -246,12 +257,16 @@ def interview_coordination_agent(candidate, emit=None):
 # ============================================
 # MAIN PIPELINE
 # ============================================
-def run_full_pipeline(candidate_id, job_id):
+def run_full_pipeline(candidate_id, job_id, execution_id=None):
+    """`execution_id`: the PipelineExecution to report live progress to (see api/tracking.py)."""
     from django.conf import settings
+    from api import interviews
+    from api.evaluation import build_evaluation
     from api.models import Application, Candidate, Job
 
     candidate = Candidate.objects.get(id=candidate_id)
     job = Job.objects.get(id=job_id)
+    candidate.pipeline_exec_id = execution_id          # transient: the agents read it to report their progress
 
     # Candidate status is shared across applications. Reset the working state before
     # evaluating another job so a rejection for one role cannot block the next role.
@@ -279,8 +294,11 @@ def run_full_pipeline(candidate_id, job_id):
         else:
             slot = None
 
+    # Detailed evaluation: skill match, missing skills, experience match, strengths, weaknesses, recommendation
+    candidate.ai_evaluation = build_evaluation(candidate, job)
+
     # Per-job record (a candidate can apply to many jobs)
-    Application.objects.update_or_create(
+    application, _created = Application.objects.update_or_create(
         candidate=candidate,
         job=job,
         defaults={
@@ -291,8 +309,16 @@ def run_full_pipeline(candidate_id, job_id):
             'fallback_used': getattr(candidate, 'fallback_used', False),
             'breakdown': getattr(candidate, 'ai_breakdown', None),
             'evidence': getattr(candidate, 'ai_evidence', []),
+            'evaluation': candidate.ai_evaluation,
         },
     )
+
+    # The proposed time becomes a managed Interview (calendar, reschedule, cancel, e-mails)
+    interview = interviews.sync_from_pipeline(application, slot)
+    if interview is not None and interview.scheduled_at != candidate.interview_date:
+        candidate.interview_date = interview.scheduled_at         # the slot had to move: keep the result in step
+        if slot:
+            slot = {**slot, 'slot': interview.scheduled_at.strftime('%Y-%m-%d %H:%M')}
 
     print("===== PIPELINE END =====")
     return candidate, slot
