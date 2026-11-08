@@ -95,14 +95,8 @@ An AI-assisted recruitment workspace. Recruiters add jobs, upload resumes, searc
 - No silent fallbacks: if the AI model is unavailable (for example the free quota is used up), the result is produced by a rule-based scorer and **clearly flagged** in the UI and the database (`fallback_used`).
 - A `/healthz` endpoint for uptime monitoring.
 
----
 
 
-**Sign-in and mobile.**
-
-![Sign in](docs/login.png)
-
-![Mobile view](docs/mobile.png)
 
 ---
 
